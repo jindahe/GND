@@ -4,6 +4,7 @@ from .mod2 import mod2
 from .MADE import MADE
 from .NADE import NADE
 from .TraDE import TraDE_binary, TraDE
+from .benchmarkqcc import qcc_circuit, matching
 from .utils import(
     CodeTN,
     SurfacecodeTN,
