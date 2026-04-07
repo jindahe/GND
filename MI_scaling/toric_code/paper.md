@@ -92,7 +92,7 @@ $$\text{Pr}(\mathbf{m}) = \sum_{\mathbf{e}} p^{|\mathbf{e}|}(1-p)^{|Q|-|\mathbf{
 
 where each two-leg circle tensor $T_{s_1 s_2}$, $s_{1,2} \in \{0, 1\}$ is used for assigning weights:
 
-$$T_{s_1 s_2} = \delta(s_1 = s_2) p^{s_1}(1-p)^{s_1} \quad \text{(E4)}$$
+$$T_{s_1 s_2} = \delta(s_1 = s_2) p^{s_1}(1-p)^{1-s_1} \quad \text{(E4)}$$
 
 and each $q$-leg square tensor $Q^s_{s_1, \dots, s_q}$, $s_i \in \{0, 1\}$ is used for imposing parity constraint on each plaquette:
 
