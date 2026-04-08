@@ -23,11 +23,7 @@ r_values    = [1, 2, 3]
 num_samples = 500
 
 # p grid: denser near p_c ≈ 0.11
-p_values = np.array([
-    0.02, 0.04, 0.06, 0.07, 0.08, 0.085, 0.09, 0.095,
-    0.10, 0.105, 0.11, 0.115, 0.12, 0.125,
-    0.13, 0.14, 0.15, 0.17, 0.20, 0.25, 0.30, 0.40, 0.50
-])
+p_values = np.linspace(0, 0.5, 100)
 
 RESULTS_CSV = "CMI_results_L10.csv"
 PLOT_FILE   = "CMI_vs_p_L10.png"
