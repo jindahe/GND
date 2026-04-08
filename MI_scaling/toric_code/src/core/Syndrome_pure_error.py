@@ -1,6 +1,7 @@
 import numpy as np
 import itertools
 import matplotlib.pyplot as plt
+from pathlib import Path
 from time import time
 
 def surface_code_MI_fast(L, p_err):
@@ -120,6 +121,7 @@ if __name__ == "__main__":
     plt.title(f"2D Surface Code MI (p={p})")
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.savefig("surface_code_MI_2D.png", dpi=150)
+    out_file = Path(__file__).resolve().parents[2] / "outputs" / "surface_code_MI_2D.png"
+    plt.savefig(out_file, dpi=150)
     plt.show()
-    print("Saved: surface_code_MI_2D.png")
+    print(f"Saved: {out_file}")

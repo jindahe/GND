@@ -10,7 +10,8 @@ import matplotlib.pyplot as plt
 import csv
 import os
 import time
-from CMI_calculation import calculate_CMI_bMPS, define_geometry_geom1
+from pathlib import Path
+from src.core.CMI_calculation import calculate_CMI_bMPS, define_geometry_geom1
 
 # ---------------------------------------------------------------------------
 # Parameters
@@ -25,8 +26,8 @@ p_values = np.array([
     0.13, 0.14, 0.15, 0.17, 0.20, 0.25, 0.30, 0.40, 0.50
 ])
 
-RESULTS_CSV = "CMI_bMPS_results.csv"
-PLOT_FILE   = "CMI_bMPS_vs_p.png"
+RESULTS_CSV = str((Path(__file__).resolve().parents[2] / "outputs" / "CMI_bMPS_results.csv"))
+PLOT_FILE   = str((Path(__file__).resolve().parents[2] / "outputs" / "CMI_bMPS_vs_p.png"))
 
 # ---------------------------------------------------------------------------
 # CSV helpers

@@ -329,7 +329,7 @@ def calculate_CMI_bMPS(L=None, p=0.1, r=6, num_samples=500,
 
     L defaults to the minimum lattice that fits the ABC region: L = 2 + 4*r.
     """
-    from bMPS_contraction import bMPS_contract_region, bMPS_prob_with_parity
+    from .bMPS_contraction import bMPS_contract_region, bMPS_prob_with_parity
 
     if L is None:
         L = 2 + 4 * r          # minimum lattice for unclipped ABC

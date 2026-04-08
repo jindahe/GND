@@ -22,7 +22,7 @@ All 6 CMI contractions become rectangular bMPS calls:
 """
 
 import numpy as np
-from CMI_calculation import Q0, Q1, Q_minus, Q_plus
+from .CMI_calculation import Q0, Q1, Q_minus, Q_plus
 
 
 # ---------------------------------------------------------------------------
@@ -302,7 +302,7 @@ def bMPS_prob_with_parity(m_grid, region_Q, region_A, pi_A, p=0.1, max_bond=16):
 
 if __name__ == '__main__':
     import time
-    from CMI_calculation import _contract, _prob_with_parity, define_geometry_geom1
+    from .CMI_calculation import _contract, _prob_with_parity, define_geometry_geom1
 
     np.random.seed(42)
     L, p, r = 10, 0.1, 2

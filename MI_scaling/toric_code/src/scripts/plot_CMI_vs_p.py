@@ -6,20 +6,21 @@ Supports larger r in two ways:
   - can switch to bMPS contraction for larger r
 
 Examples:
-  python plot_CMI_vs_p.py
-  python plot_CMI_vs_p.py --r-values 1,2,3,4,5,6
-  python plot_CMI_vs_p.py --r-values 4,6 --method auto --num-samples 50 --no-show
+  python -m src.scripts.plot_CMI_vs_p
+  python -m src.scripts.plot_CMI_vs_p --r-values 1,2,3,4,5,6
+  python -m src.scripts.plot_CMI_vs_p --r-values 4,6 --method auto --num-samples 50 --no-show
 """
 
 import argparse
 import csv
 import os
 import time
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from CMI_calculation import (
+from src.core.CMI_calculation import (
     calculate_CMI,
     calculate_CMI_bMPS,
     define_geometry_geom1,
@@ -35,8 +36,8 @@ DEFAULT_NUM_SAMPLES = 500
 DEFAULT_METHOD = "auto"
 DEFAULT_MAX_EXACT_R = 4
 DEFAULT_MAX_BOND = 64
-DEFAULT_RESULTS_CSV = "CMI_vs_p_results.csv"
-DEFAULT_PLOT_FILE = "CMI_vs_p.png"
+DEFAULT_RESULTS_CSV = str((Path(__file__).resolve().parents[2] / "outputs" / "CMI_vs_p_results.csv"))
+DEFAULT_PLOT_FILE = str((Path(__file__).resolve().parents[2] / "outputs" / "CMI_vs_p.png"))
 DEFAULT_P_VALUES = np.linspace(0, 0.5, 100)
 
 
