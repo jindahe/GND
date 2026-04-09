@@ -26,7 +26,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import matplotlib.pyplot as plt
 import numpy as np
 
-from src.core.CMI_calculation import calculate_CMI, calculate_CMI_bMPS
+from src.core.cmi_calculation import calculate_CMI, calculate_CMI_bMPS
 
 
 R_VALUES = [1, 2, 3, 4, 5, 6]

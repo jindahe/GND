@@ -39,7 +39,7 @@ chi=64 在 r=5 上误差降至 ~2.5%，但：
 
 **方案 C：列方向收缩（行方向纠缠熵可能更低）**
 - 未实现，理论上可能改善精度
-- 需重写 bMPS_contraction.py 的收缩顺序
+- 需重写 bmps_contraction.py 的收缩顺序
 
 **方案 D：变分 MPS 优化（DMRG 风格）**
 - 替代 SVD 截断的非变分方案
@@ -63,7 +63,7 @@ chi=64 在 r=5 上误差降至 ~2.5%，但：
 numpy 默认使用 Apple Accelerate 的 `dgesdd`（分治算法），对特定矩阵模式不稳定。
 
 ### 已实现的修复
-在 `bMPS_contraction._svd()` 中加入 fallback：
+在 `bmps_contraction._svd()` 中加入 fallback：
 ```python
 def _svd(A_mat):
     try:
@@ -100,9 +100,9 @@ CMI 估计量 $X = -\log\Pr(m_{BC},\pi_A) + \log\Pr(m_{ABC}) + \log\Pr(m_B,\pi_A
 
 | 任务 | 状态 | 文件 |
 |---|---|---|
-| P1: CMI 公式 + geom1 几何 | ✅ | CMI_calculation.py |
-| P2: opt_einsum 路径缓存 | ✅ (2x 加速) | CMI_calculation.py |
-| P3: bMPS 逐行收缩 | ✅ 实现完成，精度受限 | bMPS_contraction.py |
+| P1: CMI 公式 + geom1 几何 | ✅ | cmi_calculation.py |
+| P2: opt_einsum 路径缓存 | ✅ (2x 加速) | cmi_calculation.py |
+| P3: bMPS 逐行收缩 | ✅ 实现完成，精度受限 | bmps_contraction.py |
 | L=10 r=1,2,3 p-sweep | ✅ | CMI_results_L10.csv |
 | r=6 chi=16 sweep | ⚠️ 结果不可信 | CMI_bMPS_results.csv |
 | r=3,4 精确 TN sweep | 🔲 待运行 | — |

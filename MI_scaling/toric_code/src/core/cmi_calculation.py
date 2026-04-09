@@ -22,9 +22,46 @@ MC estimator (all four probabilities evaluated at the same error sample e):
 import numpy as np
 import opt_einsum as oe
 
+
+# ---------------------------------------------------------------------------
+# Numeric helpers
+# ---------------------------------------------------------------------------
+
+
+def _accumulator_dtype():
+    """Use longdouble when it offers wider range than float64."""
+    try:
+        if np.finfo(np.longdouble).max > np.finfo(np.float64).max:
+            return np.longdouble
+    except (TypeError, ValueError):
+        pass
+    return np.float64
+
+
+ACCUM_DTYPE = _accumulator_dtype()
+
+
+
+def _positive_log_from_scalar(x):
+    """Return log(x) for finite positive scalars; otherwise None."""
+    x = float(x)
+    if (not np.isfinite(x)) or x <= 0.0:
+        return None
+    return ACCUM_DTYPE(np.log(x))
+
+
+
+def _positive_log_from_signed_log(sign, logabs):
+    """Return log(prob) if signed-log value is a finite positive number; else None."""
+    if sign <= 0.0 or not np.isfinite(logabs):
+        return None
+    return ACCUM_DTYPE(logabs)
+
+
 # ---------------------------------------------------------------------------
 # Q tensors
 # ---------------------------------------------------------------------------
+
 
 def _make_Q(m_val):
     Q = np.zeros((2, 2, 2, 2))
@@ -36,10 +73,12 @@ def _make_Q(m_val):
                         Q[i, j, k, l] = 1.0
     return Q
 
+
 Q0 = _make_Q(0)
 Q1 = _make_Q(1)
-Q_plus  = Q0 + Q1   # all-ones: no parity constraint (marginalise)
-Q_minus = Q0 - Q1   # signed: encodes (-1)^{m_i} weight for Fourier trick
+Q_plus = Q0 + Q1   # all-ones: no parity constraint (marginalise)
+Q_minus = Q0 - Q1  # signed: encodes (-1)^{m_i} weight for Fourier trick
+
 
 # ---------------------------------------------------------------------------
 # Edge key conventions
@@ -51,9 +90,12 @@ Q_minus = Q0 - Q1   # signed: encodes (-1)^{m_i} weight for Fourier trick
 #                 = right edge of plaquette (i, j-1)
 # ---------------------------------------------------------------------------
 
+
 def _plaq_edges(i, j):
     """Return (top, right, bottom, left) edge keys for plaquette (i,j)."""
-    return (('h', i, j), ('v', i, j+1), ('h', i+1, j), ('v', i, j))
+    return (('h', i, j), ('v', i, j + 1), ('h', i + 1, j), ('v', i, j))
+
+
 
 def _region_edges(plaquette_set):
     edges = set()
@@ -62,9 +104,11 @@ def _region_edges(plaquette_set):
             edges.add(e)
     return edges
 
+
 # ---------------------------------------------------------------------------
 # Core TN builder & contraction
 # ---------------------------------------------------------------------------
+
 
 def _contract(m_grid, region_Q, region_A_signed=None, p=0.1):
     """
@@ -101,6 +145,8 @@ def _contract(m_grid, region_Q, region_A_signed=None, p=0.1):
 
     return float(oe.contract(*tensors_and_indices))
 
+
+
 def _prob_with_parity(m_grid, region_Q, region_A, pi_A, p=0.1):
     """
     Compute Pr(m_Q, π(m_A) = pi_A) via the Fourier parity trick.
@@ -109,20 +155,22 @@ def _prob_with_parity(m_grid, region_Q, region_A, pi_A, p=0.1):
 
     where Pr_signed(m_Q) is the TN with Q_minus on A plaquettes.
     """
-    prob_Q        = _contract(m_grid, region_Q, p=p)
+    prob_Q = _contract(m_grid, region_Q, p=p)
     prob_Q_signed = _contract(m_grid, region_Q, region_A_signed=region_A, p=p)
     return 0.5 * (prob_Q + ((-1) ** int(pi_A)) * prob_Q_signed)
+
 
 # ---------------------------------------------------------------------------
 # P2: Cached contractor — precomputes opt_einsum path once per region
 # ---------------------------------------------------------------------------
+
 
 class CachedContractor:
     """
     Precomputes the opt_einsum contraction path for a fixed region structure.
 
     The path depends only on the TN topology (which edges/tensors are present),
-    NOT on the specific Q tensor values (m_grid).  Reusing the cached path
+    NOT on the specific Q tensor values (m_grid). Reusing the cached path
     avoids repeated path search and gives ~10x speedup per contraction.
 
     Usage:
@@ -132,15 +180,15 @@ class CachedContractor:
 
     def __init__(self, region_Q, region_A_signed, p):
         W = np.array([1.0 - p, p])
-        region_Q_list  = sorted(region_Q)          # deterministic ordering
-        region_A_list  = sorted(region_A_signed or [])
+        region_Q_list = sorted(region_Q)          # deterministic ordering
+        region_A_list = sorted(region_A_signed or [])
         all_plaquettes = set(region_Q_list) | set(region_A_list)
 
         edge_to_id = {e: idx for idx, e in
                       enumerate(sorted(_region_edges(all_plaquettes)))}
 
         self._tensor_list = []
-        self._index_list  = []
+        self._index_list = []
         self._q_positions = {}   # (i,j) → position in tensor_list
 
         # W tensors (constant across samples)
@@ -177,9 +225,11 @@ class CachedContractor:
             args.extend([t, idx])
         return float(oe.contract(*args, optimize=self._path))
 
+
 # ---------------------------------------------------------------------------
 # Geometry: geom1 (Appendix F)
 # ---------------------------------------------------------------------------
+
 
 def define_geometry_geom1(L, r):
     """
@@ -199,11 +249,15 @@ def define_geometry_geom1(L, r):
         if 0 <= ci + di < L and 0 <= cj + dj < L
     )
 
-    A_imin = min(i for i, _ in A);  A_imax = max(i for i, _ in A)
-    A_jmin = min(j for _, j in A);  A_jmax = max(j for _, j in A)
+    A_imin = min(i for i, _ in A)
+    A_imax = max(i for i, _ in A)
+    A_jmin = min(j for _, j in A)
+    A_jmax = max(j for _, j in A)
 
-    B_imin = max(0, A_imin - r);  B_imax = min(L - 1, A_imax + r)
-    B_jmin = max(0, A_jmin - r);  B_jmax = min(L - 1, A_jmax + r)
+    B_imin = max(0, A_imin - r)
+    B_imax = min(L - 1, A_imax + r)
+    B_jmin = max(0, A_jmin - r)
+    B_jmax = min(L - 1, A_jmax + r)
 
     B = frozenset(
         (i, j)
@@ -212,8 +266,10 @@ def define_geometry_geom1(L, r):
         if (i, j) not in A
     )
 
-    C_imin = max(0, B_imin - r);  C_imax = min(L - 1, B_imax + r)
-    C_jmin = max(0, B_jmin - r);  C_jmax = min(L - 1, B_jmax + r)
+    C_imin = max(0, B_imin - r)
+    C_imax = min(L - 1, B_imax + r)
+    C_jmin = max(0, B_jmin - r)
+    C_jmax = min(L - 1, B_jmax + r)
 
     C = frozenset(
         (i, j)
@@ -224,9 +280,11 @@ def define_geometry_geom1(L, r):
 
     return A, B, C
 
+
 # ---------------------------------------------------------------------------
 # Main: CMI estimator
 # ---------------------------------------------------------------------------
+
 
 def calculate_CMI(L=10, p=0.1, r=2, num_samples=500, seed=None, verbose=True):
     """
@@ -240,8 +298,8 @@ def calculate_CMI(L=10, p=0.1, r=2, num_samples=500, seed=None, verbose=True):
         np.random.seed(seed)
 
     A, B, C = define_geometry_geom1(L, r)
-    AB  = A | B
-    BC  = B | C
+    AB = A | B
+    BC = B | C
     ABC = A | B | C
 
     if verbose:
@@ -249,14 +307,14 @@ def calculate_CMI(L=10, p=0.1, r=2, num_samples=500, seed=None, verbose=True):
         print(f"  |A|={len(A)}, |B|={len(B)}, |C|={len(C)}, |ABC|={len(ABC)}")
 
     # --- P2: Pre-build cached contractors (path computed once per region) ---
-    cc_ABC       = CachedContractor(ABC, None, p)
-    cc_AB        = CachedContractor(AB,  None, p)
-    cc_B         = CachedContractor(B,   None, p)
-    cc_B_signed  = CachedContractor(B,   A,    p)
-    cc_BC        = CachedContractor(BC,  None, p)
-    cc_BC_signed = CachedContractor(BC,  A,    p)
+    cc_ABC = CachedContractor(ABC, None, p)
+    cc_AB = CachedContractor(AB, None, p)
+    cc_B = CachedContractor(B, None, p)
+    cc_B_signed = CachedContractor(B, A, p)
+    cc_BC = CachedContractor(BC, None, p)
+    cc_BC_signed = CachedContractor(BC, A, p)
 
-    CMI_sum = 0.0
+    CMI_sum = ACCUM_DTYPE(0.0)
     skipped = 0
 
     for s in range(num_samples):
@@ -266,41 +324,46 @@ def calculate_CMI(L=10, p=0.1, r=2, num_samples=500, seed=None, verbose=True):
 
         # 2. Compute syndrome m = ∂e (vectorised)
         m_grid = (
-            h_err[:L, :] + h_err[1:, :] +
-            v_err[:, :L] + v_err[:, 1:]
+            h_err[:L, :] + h_err[1:, :]
+            + v_err[:, :L] + v_err[:, 1:]
         ) % 2
 
         # 3. π(m_A) — topological parity of A region
         pi_A = int(sum(m_grid[i, j] for (i, j) in A) % 2)
 
         # 4. Six contractions using cached paths
-        prob_ABC  = cc_ABC.contract(m_grid)
-        prob_AB   = cc_AB.contract(m_grid)
-        prob_B    = cc_B.contract(m_grid)
-        prob_Bs   = cc_B_signed.contract(m_grid)
-        prob_BC   = cc_BC.contract(m_grid)
-        prob_BCs  = cc_BC_signed.contract(m_grid)
+        prob_ABC = cc_ABC.contract(m_grid)
+        prob_AB = cc_AB.contract(m_grid)
+        prob_B = cc_B.contract(m_grid)
+        prob_Bs = cc_B_signed.contract(m_grid)
+        prob_BC = cc_BC.contract(m_grid)
+        prob_BCs = cc_BC_signed.contract(m_grid)
 
         sign = (-1) ** pi_A
-        prob_B_pi  = 0.5 * (prob_B  + sign * prob_Bs)
+        prob_B_pi = 0.5 * (prob_B + sign * prob_Bs)
         prob_BC_pi = 0.5 * (prob_BC + sign * prob_BCs)
 
-        if min(prob_ABC, prob_AB, prob_B_pi, prob_BC_pi) <= 0:
+        log_prob_ABC = _positive_log_from_scalar(prob_ABC)
+        log_prob_AB = _positive_log_from_scalar(prob_AB)
+        log_prob_B_pi = _positive_log_from_scalar(prob_B_pi)
+        log_prob_BC_pi = _positive_log_from_scalar(prob_BC_pi)
+
+        if None in (log_prob_ABC, log_prob_AB, log_prob_B_pi, log_prob_BC_pi):
             skipped += 1
             continue
 
         # 5. Per-sample CMI contribution
         CMI_sum += (
-            -np.log(prob_BC_pi)
-            + np.log(prob_ABC)
-            + np.log(prob_B_pi)
-            - np.log(prob_AB)
+            -log_prob_BC_pi
+            + log_prob_ABC
+            + log_prob_B_pi
+            - log_prob_AB
         )
 
         if verbose and (s + 1) % 100 == 0:
             valid_so_far = s + 1 - skipped
             cmi_now = CMI_sum / valid_so_far if valid_so_far else float('nan')
-            print(f"  [{s+1}/{num_samples}] CMI ≈ {cmi_now:.4f} nats")
+            print(f"  [{s+1}/{num_samples}] CMI ≈ {float(cmi_now):.4f} nats")
 
     valid = num_samples - skipped
     if skipped and verbose:
@@ -313,23 +376,25 @@ def calculate_CMI(L=10, p=0.1, r=2, num_samples=500, seed=None, verbose=True):
             print("ERROR: no valid samples.")
         return None
 
-    CMI = CMI_sum / valid
+    CMI = float(CMI_sum / valid)
     if verbose:
         print(f"  → I(A:C|B) = {CMI:.6f} nats  ({valid} valid samples)")
     return CMI
 
 
+
 def calculate_CMI_bMPS(L=None, p=0.1, r=6, num_samples=500,
                        max_bond=16, seed=None, verbose=True):
     """
-    Estimate I(A:C|B) using bMPS contraction (P3).
+    Estimate I(A:C|B) using bMPS contraction (P3/P4).
 
-    Enables large r (e.g. r=6,9,12,15) by replacing exact TN contraction
-    with boundary-MPS with bond truncation to max_bond.
+    P4 upgrade: the bMPS backend now exposes signed log-probabilities, so the
+    estimator accumulates log-probabilities directly rather than applying
+    np.log to potentially underflowed scalar probabilities.
 
     L defaults to the minimum lattice that fits the ABC region: L = 2 + 4*r.
     """
-    from .bMPS_contraction import bMPS_contract_region, bMPS_prob_with_parity
+    from .bmps_contraction import bMPS_contract_region, bMPS_prob_with_parity
 
     if L is None:
         L = 2 + 4 * r          # minimum lattice for unclipped ABC
@@ -338,15 +403,15 @@ def calculate_CMI_bMPS(L=None, p=0.1, r=6, num_samples=500,
         np.random.seed(seed)
 
     A, B, C = define_geometry_geom1(L, r)
-    AB  = A | B
-    BC  = B | C
+    AB = A | B
+    BC = B | C
     ABC = A | B | C
 
     if verbose:
         print(f"[bMPS] geom1 — L={L}, p={p:.4f}, r={r}, max_bond={max_bond}")
         print(f"  |A|={len(A)}, |B|={len(B)}, |C|={len(C)}, |ABC|={len(ABC)}")
 
-    CMI_sum = 0.0
+    CMI_sum = ACCUM_DTYPE(0.0)
     skipped = 0
 
     for s in range(num_samples):
@@ -356,23 +421,37 @@ def calculate_CMI_bMPS(L=None, p=0.1, r=6, num_samples=500,
 
         pi_A = int(sum(m_grid[i, j] for (i, j) in A) % 2)
 
-        prob_ABC   = bMPS_contract_region(m_grid, ABC, None, p, max_bond)
-        prob_AB    = bMPS_contract_region(m_grid, AB,  None, p, max_bond)
-        prob_B_pi  = bMPS_prob_with_parity(m_grid, B,  A, pi_A, p, max_bond)
-        prob_BC_pi = bMPS_prob_with_parity(m_grid, BC, A, pi_A, p, max_bond)
+        sign_ABC, log_prob_ABC = bMPS_contract_region(
+            m_grid, ABC, None, p, max_bond, return_log=True
+        )
+        sign_AB, log_prob_AB = bMPS_contract_region(
+            m_grid, AB, None, p, max_bond, return_log=True
+        )
+        sign_B_pi, log_prob_B_pi = bMPS_prob_with_parity(
+            m_grid, B, A, pi_A, p, max_bond, return_log=True
+        )
+        sign_BC_pi, log_prob_BC_pi = bMPS_prob_with_parity(
+            m_grid, BC, A, pi_A, p, max_bond, return_log=True
+        )
 
-        if min(prob_ABC, prob_AB, prob_B_pi, prob_BC_pi) <= 0:
+        log_prob_ABC = _positive_log_from_signed_log(sign_ABC, log_prob_ABC)
+        log_prob_AB = _positive_log_from_signed_log(sign_AB, log_prob_AB)
+        log_prob_B_pi = _positive_log_from_signed_log(sign_B_pi, log_prob_B_pi)
+        log_prob_BC_pi = _positive_log_from_signed_log(sign_BC_pi, log_prob_BC_pi)
+
+        if None in (log_prob_ABC, log_prob_AB, log_prob_B_pi, log_prob_BC_pi):
             skipped += 1
             continue
 
         CMI_sum += (
-            -np.log(prob_BC_pi) + np.log(prob_ABC)
-            + np.log(prob_B_pi) - np.log(prob_AB)
+            -log_prob_BC_pi + log_prob_ABC
+            + log_prob_B_pi - log_prob_AB
         )
 
         if verbose and (s + 1) % 50 == 0:
             v_so_far = s + 1 - skipped
-            print(f"  [{s+1}/{num_samples}] CMI ≈ {CMI_sum/v_so_far:.4f} nats")
+            cmi_now = CMI_sum / v_so_far if v_so_far else float('nan')
+            print(f"  [{s+1}/{num_samples}] CMI ≈ {float(cmi_now):.4f} nats")
 
     valid = num_samples - skipped
     if skipped and verbose:
@@ -385,7 +464,7 @@ def calculate_CMI_bMPS(L=None, p=0.1, r=6, num_samples=500,
             print("ERROR: no valid samples.")
         return None
 
-    CMI = CMI_sum / valid
+    CMI = float(CMI_sum / valid)
     if verbose:
         print(f"  → I(A:C|B) = {CMI:.6f} nats  ({valid} valid samples)")
     return CMI

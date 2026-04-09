@@ -11,7 +11,7 @@ import csv
 import os
 import time
 from pathlib import Path
-from src.core.CMI_calculation import calculate_CMI_bMPS, define_geometry_geom1
+from src.core.cmi_calculation import calculate_CMI_bMPS, define_geometry_geom1
 
 # ---------------------------------------------------------------------------
 # Parameters

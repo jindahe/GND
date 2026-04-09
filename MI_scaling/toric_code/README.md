@@ -16,7 +16,7 @@
 在仓库根目录执行：
 
 ```bash
-python -m src.scripts.plot_CMI_vs_p --help
+python -m src.scripts.plot_cmi_vs_p --help
 ```
 
 ## 常用命令
@@ -24,7 +24,7 @@ python -m src.scripts.plot_CMI_vs_p --help
 ### 1) 运行 CMI vs p 扫描
 
 ```bash
-python -m src.scripts.plot_CMI_vs_p \
+python -m src.scripts.plot_cmi_vs_p \
   --r-values 1,2,3,4,5,6 \
   --method auto \
   --num-samples 500 \
@@ -36,7 +36,7 @@ python -m src.scripts.plot_CMI_vs_p \
 ### 2) 运行大 r 的 bMPS 扫描
 
 ```bash
-python -m src.scripts.plot_CMI_bMPS
+python -m src.scripts.plot_cmi_bmps
 ```
 
 默认输出到 `outputs/CMI_bMPS_results.csv` 和 `outputs/CMI_bMPS_vs_p.png`。
@@ -44,7 +44,7 @@ python -m src.scripts.plot_CMI_bMPS
 ### 3) 运行 fast2h 版本（r=1..6, p=0.05/0.11/0.15）
 
 ```bash
-python -m src.scripts.plot_CMI_vs_r_three_p_fast2h
+python -m src.scripts.plot_cmi_vs_r_three_p_fast2h
 ```
 
 默认输出到：

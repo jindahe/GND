@@ -1,31 +1,35 @@
-# 文件夹整理与整合说明（2026-04-08）
+# 文件夹整理与整合说明（2026-04-09）
 
 ## 整合目标
 
-将仓库按职责划分为 `src/`、`docs/`、`outputs/` 三层结构，减少根目录噪音，统一代码入口与数据出口路径。
+将仓库按职责划分为 `src/`、`docs/`、`outputs/` 三层结构，降低根目录噪音；统一文档命名，并清理重复缓存文件。
 
-## 新目录结构
+## 当前目录结构
 
 ```text
 toric_code/
 ├── AGENTS.md
-├── CLAUDE.md
+├── README.md
 ├── src/
 │   ├── core/
-│   │   ├── CMI_calculation.py
-│   │   ├── bMPS_contraction.py
-│   │   ├── H_calculation.py
-│   │   └── Syndrome_pure_error.py
+│   │   ├── cmi_calculation.py
+│   │   ├── bmps_contraction.py
+│   │   ├── h_calculation.py
+│   │   └── syndrome_pure_error.py
 │   └── scripts/
-│       ├── plot_CMI_vs_p.py
-│       ├── plot_CMI_bMPS.py
-│       └── plot_CMI_vs_r_three_p_fast2h.py
+│       ├── plot_cmi_vs_p.py
+│       ├── plot_cmi_bmps.py
+│       ├── plot_cmi_vs_r_three_p_fast2h.py
+│       ├── plot_cmi_vs_r_three_p_chunked.py
+│       ├── refine_fast2h_chi32.py
+│       ├── cmi_keypoints_chi_scan.py
+│       └── cmi_keypoints_multiseed.py
 ├── docs/
 │   ├── PROJECT.md
 │   ├── PROBLEM.md
 │   ├── PLAN.md
 │   ├── PHYSICS.md
-│   ├── paper.md
+│   ├── PAPER.md
 │   └── FOLDER_INTEGRATION.md
 ├── outputs/
 │   ├── *.csv
@@ -33,6 +37,13 @@ toric_code/
 └── archive/
     └── 2026-04-08_cleanup/
 ```
+
+## 本次清理内容
+
+- 合并后删除重复说明文件：`CLAUDE.md`（内容已并入 `AGENTS.md`）。
+- 删除全部 Python 缓存：`__pycache__/` 与 `*.pyc`。
+- 统一文档命名：`docs/paper.md` → `docs/PAPER.md`。
+- 清理空目录：`archive/2026-04-08_cleanup/cache/`。
 
 ## 保留策略（需要）
 
@@ -52,25 +63,27 @@ toric_code/
   - `archive/2026-04-08_cleanup/scripts/`
   - `archive/2026-04-08_cleanup/results/`
   - `archive/2026-04-08_cleanup/data/`
-  - `archive/2026-04-08_cleanup/cache/`
 
-## 运行方式（新）
+## 命名约定
+
+- 文档使用大写主题名：`PROJECT.md`、`PLAN.md`、`PAPER.md`。
+- 核心代码保持现有物理语义命名，不做行为性重构。
+- 输出文件保持“任务语义 + 参数标签”风格，避免 `final/new/tmp` 等不透明后缀。
+
+## 运行方式（当前）
 
 从仓库根目录运行：
 
 ```bash
-python -m src.scripts.plot_CMI_vs_p --help
-python -m src.scripts.plot_CMI_bMPS
-python -m src.scripts.plot_CMI_vs_r_three_p_fast2h
+python -m src.scripts.plot_cmi_vs_p --help
+python -m src.scripts.plot_cmi_bmps
+python -m src.scripts.plot_cmi_vs_r_three_p_fast2h
+python -m src.scripts.plot_cmi_vs_r_three_p_chunked --help
+python -m src.scripts.refine_fast2h_chi32 --help
 ```
-
-说明：
-- 脚本默认把结果写入 `outputs/`。
-- `src/` 已配置为包结构（含 `__init__.py`），支持模块化导入。
 
 ## 去重原则
 
 - 同类任务只保留一个“当前主入口”脚本。
 - 历史版本不删除、仅归档，确保可追溯。
-- 根目录仅保留配置与一级目录入口。
-
+- 根目录仅保留项目入口与治理文档。

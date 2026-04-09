@@ -6,9 +6,9 @@ Supports larger r in two ways:
   - can switch to bMPS contraction for larger r
 
 Examples:
-  python -m src.scripts.plot_CMI_vs_p
-  python -m src.scripts.plot_CMI_vs_p --r-values 1,2,3,4,5,6
-  python -m src.scripts.plot_CMI_vs_p --r-values 4,6 --method auto --num-samples 50 --no-show
+  python -m src.scripts.plot_cmi_vs_p
+  python -m src.scripts.plot_cmi_vs_p --r-values 1,2,3,4,5,6
+  python -m src.scripts.plot_cmi_vs_p --r-values 4,6 --method auto --num-samples 50 --no-show
 """
 
 import argparse
@@ -20,7 +20,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from src.core.CMI_calculation import (
+from src.core.cmi_calculation import (
     calculate_CMI,
     calculate_CMI_bMPS,
     define_geometry_geom1,

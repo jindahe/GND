@@ -22,12 +22,72 @@ All 6 CMI contractions become rectangular bMPS calls:
 """
 
 import numpy as np
-from .CMI_calculation import Q0, Q1, Q_minus, Q_plus
+from .cmi_calculation import Q0, Q1, Q_minus, Q_plus
+
+
+LOG_TWO = float(np.log(2.0))
+LOG_MAX_FLOAT64 = float(np.log(np.finfo(np.float64).max))
+
+
+# ---------------------------------------------------------------------------
+# Signed log helpers
+# ---------------------------------------------------------------------------
+
+
+def _signed_logabs_from_scalar(x):
+    """Return (sign, log|x|) for a scalar, using -inf for zero."""
+    x = float(x)
+    if (not np.isfinite(x)) or x == 0.0:
+        return 0.0, float('-inf')
+    return float(np.sign(x)), float(np.log(abs(x)))
+
+
+
+def _signed_logsumexp(logabs_a, sign_a, logabs_b, sign_b):
+    """
+    Stable signed sum in log space.
+
+    Returns sign, logabs for:
+        sign_a * exp(logabs_a) + sign_b * exp(logabs_b)
+    """
+    if sign_a == 0.0 or not np.isfinite(logabs_a):
+        return sign_b, logabs_b
+    if sign_b == 0.0 or not np.isfinite(logabs_b):
+        return sign_a, logabs_a
+
+    if logabs_b > logabs_a:
+        logabs_a, logabs_b = logabs_b, logabs_a
+        sign_a, sign_b = sign_b, sign_a
+
+    delta = logabs_b - logabs_a  # <= 0
+
+    if sign_a == sign_b:
+        return sign_a, float(logabs_a + np.log1p(np.exp(delta)))
+
+    if delta == 0.0:
+        return 0.0, float('-inf')
+
+    diff = -np.expm1(delta)  # 1 - exp(delta), stable for delta near 0-
+    if diff <= 0.0:
+        return 0.0, float('-inf')
+
+    return sign_a, float(logabs_a + np.log(diff))
+
+
+
+def _scalar_from_signed_log(sign, logabs):
+    """Convert signed log representation back to float, saturating on overflow."""
+    if sign == 0.0 or not np.isfinite(logabs):
+        return 0.0
+    if logabs > LOG_MAX_FLOAT64:
+        return float(sign) * float('inf')
+    return float(sign) * float(np.exp(logabs))
 
 
 # ---------------------------------------------------------------------------
 # Site tensor construction
 # ---------------------------------------------------------------------------
+
 
 def make_site_tensor(i, j, m_grid, plaq_type, R_min, R_max, C_min, C_max, p):
     """
@@ -38,7 +98,7 @@ def make_site_tensor(i, j, m_grid, plaq_type, R_min, R_max, C_min, C_max, p):
                 'minus' → Q_minus (signed Fourier parity trick)
     Shared edges absorb sqrt(W); boundary edges absorb full W.
     """
-    W   = np.array([1.0 - p, p])
+    W = np.array([1.0 - p, p], dtype=np.float64)
     sqW = np.sqrt(W)
 
     if plaq_type == 'Q':
@@ -49,18 +109,21 @@ def make_site_tensor(i, j, m_grid, plaq_type, R_min, R_max, C_min, C_max, p):
         Q = Q_minus
 
     # Per-direction weight: W for boundary, sqrt(W) for shared
-    w_top    = W    if i == R_min else sqW
-    w_bottom = W    if i == R_max else sqW
-    w_left   = W    if j == C_min else sqW
-    w_right  = W    if j == C_max else sqW
+    w_top = W if i == R_min else sqW
+    w_bottom = W if i == R_max else sqW
+    w_left = W if j == C_min else sqW
+    w_right = W if j == C_max else sqW
 
     # Broadcast: Q[top, right, bottom, left]
-    T = (Q
-         * w_top   [:, None, None, None]
-         * w_right [None, :, None, None]
-         * w_bottom[None, None, :, None]
-         * w_left  [None, None, None, :])
-    return T                    # shape (2, 2, 2, 2)
+    T = (
+        Q
+        * w_top[:, None, None, None]
+        * w_right[None, :, None, None]
+        * w_bottom[None, None, :, None]
+        * w_left[None, None, None, :]
+    )
+    return T  # shape (2, 2, 2, 2)
+
 
 
 def build_site_grid(R_min, R_max, C_min, C_max,
@@ -96,22 +159,25 @@ def build_site_grid(R_min, R_max, C_min, C_max,
 # bMPS contraction
 # ---------------------------------------------------------------------------
 
-def bMPS_contract(site_grid, max_bond=16):
+
+def bMPS_contract(site_grid, max_bond=16, return_log=False):
     """
     Contract a rectangular 2D TN via boundary MPS.
 
-    site_grid : list[list[ndarray]] of shape (H, W), each tensor (2,2,2,2)
-    max_bond  : MPS bond dimension cap (truncation threshold)
+    site_grid   : list[list[ndarray]] of shape (H, W), each tensor (2,2,2,2)
+    max_bond    : MPS bond dimension cap (truncation threshold)
+    return_log  : if True, return (sign, logabs) instead of scalar
 
-    Returns: scalar (may be negative for signed TNs).
+    Signed log output is useful for preventing underflow in downstream log-prob
+    estimators, especially for large regions and parity-signed contractions.
     """
     H = len(site_grid)
     W = len(site_grid[0])
 
     if H == 0 or W == 0:
-        return 1.0
+        return (1.0, 0.0) if return_log else 1.0
 
-    log_scale = 0.0   # accumulated log of normalisations
+    log_scale = 0.0  # accumulated log of normalisations
 
     def _mps_normalise(mps):
         """Normalise each tensor, return cumulative log of removed scales."""
@@ -127,35 +193,43 @@ def bMPS_contract(site_grid, max_bond=16):
     # Sum over top (boundary) axis → shape (right, bottom, left) → transpose (left, bottom, right)
     mps = []
     for j in range(W):
-        A = site_grid[0][j].sum(axis=0).transpose(2, 1, 0)   # (left, bottom, right)
+        A = site_grid[0][j].sum(axis=0).transpose(2, 1, 0)  # (left, bottom, right)
         mps.append(A)
 
     # Sum out left boundary of site 0 and right boundary of site W-1
-    mps[0]  = mps[0].sum(axis=0, keepdims=True)   # (1, bottom, right)
-    mps[-1] = mps[-1].sum(axis=2, keepdims=True)   # (left, bottom, 1)
+    mps[0] = mps[0].sum(axis=0, keepdims=True)   # (1, bottom, right)
+    mps[-1] = mps[-1].sum(axis=2, keepdims=True)  # (left, bottom, 1)
 
     if H == 1:
-        return _close_mps(mps)
+        sign, logabs = _close_mps_log(mps)
+    else:
+        # --- Middle rows ---
+        for i in range(1, H - 1):
+            mps = _apply_mpo(mps, site_grid[i])
+            mps, lf = _mps_normalise(mps)   # normalise BEFORE SVD to prevent divergence
+            log_scale += lf
+            mps = _compress_mps(mps, max_bond)
 
-    # --- Middle rows ---
-    for i in range(1, H - 1):
-        mps = _apply_mpo(mps, site_grid[i])
-        mps, lf = _mps_normalise(mps)   # normalise BEFORE SVD to prevent divergence
-        log_scale += lf
-        mps = _compress_mps(mps, max_bond)
+        # --- Last row: sum over bottom boundary, contract to scalar in signed-log form ---
+        sign, logabs = _apply_last_row_log(mps, site_grid[-1])
 
-    # --- Last row: sum over bottom boundary, contract to scalar ---
-    # _apply_last_row handles its own per-site log-scale normalisation internally
-    return _apply_last_row(mps, site_grid[-1]) * np.exp(log_scale)
+    if sign == 0.0 or not np.isfinite(logabs):
+        return (0.0, float('-inf')) if return_log else 0.0
+
+    total_logabs = float(logabs + log_scale)
+    if return_log:
+        return sign, total_logabs
+    return _scalar_from_signed_log(sign, total_logabs)
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _apply_mpo(mps, row_tensors):
     """
-    Apply one row as an MPO.  Bond dimensions grow ×2 (before compression).
+    Apply one row as an MPO. Bond dimensions grow ×2 (before compression).
     MPO convention: T[top, right, bottom, left] → M[d_in=top, d_out=bottom, m_l=left, m_r=right]
     """
     W_sites = len(mps)
@@ -184,6 +258,7 @@ def _apply_mpo(mps, row_tensors):
     return new_mps
 
 
+
 def _svd(A_mat):
     """Robust SVD: falls back to scipy gesvd if numpy gesdd fails."""
     try:
@@ -191,6 +266,7 @@ def _svd(A_mat):
     except np.linalg.LinAlgError:
         import scipy.linalg
         return scipy.linalg.svd(A_mat, full_matrices=False, lapack_driver='gesvd')
+
 
 
 def _compress_mps(mps, max_bond):
@@ -202,7 +278,9 @@ def _compress_mps(mps, max_bond):
         A_mat = A.reshape(chi_l * d, chi_r)
         U, S, Vh = _svd(A_mat)
         k = min(max_bond, len(S))
-        U = U[:, :k]; S = S[:k]; Vh = Vh[:k, :]
+        U = U[:, :k]
+        S = S[:k]
+        Vh = Vh[:k, :]
         mps[j] = U.reshape(chi_l, d, k)
         SV = (S[:, None] * Vh)             # (k, chi_r_old)
         A_next = mps[j + 1]                # (chi_r_old, d_next, chi_r_next)
@@ -210,14 +288,15 @@ def _compress_mps(mps, max_bond):
     return mps
 
 
-def _apply_last_row(mps, row_tensors):
+
+def _apply_last_row_log(mps, row_tensors):
     """
-    Apply last row (sum over bottom boundary) and contract residual MPS to scalar.
-    Uses running log-scale normalisation to prevent underflow/overflow.
+    Apply last row (sum over bottom boundary) and contract residual MPS to a
+    signed log-value. Uses running normalisation to prevent under/overflow.
     """
     W_sites = len(mps)
     v = np.ones(1)
-    log_scale = 0.0      # accumulated log of normalisation factors
+    log_scale = 0.0
 
     for j in range(W_sites):
         A = mps[j]          # (chi_l, d_in, chi_r)
@@ -239,34 +318,51 @@ def _apply_last_row(mps, row_tensors):
         with np.errstate(divide='ignore', over='ignore', invalid='ignore'):
             v = v @ B_mat
 
-        # Renormalise v to avoid underflow/overflow accumulation
         norm = np.max(np.abs(v))
         if norm > 0:
             log_scale += np.log(norm)
             v /= norm
         else:
-            return 0.0   # true zero probability
+            return 0.0, float('-inf')
 
-    return float(v.squeeze()) * np.exp(log_scale)
+    sign, logabs = _signed_logabs_from_scalar(v.squeeze())
+    if sign == 0.0:
+        return 0.0, float('-inf')
+    return sign, float(log_scale + logabs)
 
 
-def _close_mps(mps):
-    """Contract a single-row MPS to scalar (sum over all physical indices)."""
+
+def _close_mps_log(mps):
+    """Contract a single-row MPS to a signed log-value."""
     v = np.ones(1)
+    log_scale = 0.0
+
     for A in mps:
-        # A[chi_l, d, chi_r]: d is a boundary edge to be summed
         A_summed = A.sum(axis=1)           # (chi_l, chi_r)
         v = v @ A_summed.reshape(A.shape[0], A.shape[2])
-    return float(v.squeeze())
+
+        norm = np.max(np.abs(v))
+        if norm > 0:
+            log_scale += np.log(norm)
+            v /= norm
+        else:
+            return 0.0, float('-inf')
+
+    sign, logabs = _signed_logabs_from_scalar(v.squeeze())
+    if sign == 0.0:
+        return 0.0, float('-inf')
+    return sign, float(log_scale + logabs)
 
 
 # ---------------------------------------------------------------------------
 # High-level interface matching _contract / CachedContractor API
 # ---------------------------------------------------------------------------
 
-def bMPS_contract_region(m_grid, region_Q, region_A_signed=None, p=0.1, max_bond=16):
+
+def bMPS_contract_region(m_grid, region_Q, region_A_signed=None, p=0.1,
+                         max_bond=16, return_log=False):
     """
-    Drop-in replacement for CMI_calculation._contract using bMPS.
+    Drop-in replacement for cmi_calculation._contract using bMPS.
 
     Automatically determines the bounding box from region_Q ∪ region_A_signed.
     """
@@ -275,7 +371,7 @@ def bMPS_contract_region(m_grid, region_Q, region_A_signed=None, p=0.1, max_bond
     all_plaq = region_Q | region_A
 
     if not all_plaq:
-        return 1.0
+        return (1.0, 0.0) if return_log else 1.0
 
     R_min = min(i for i, _ in all_plaq)
     R_max = max(i for i, _ in all_plaq)
@@ -284,16 +380,33 @@ def bMPS_contract_region(m_grid, region_Q, region_A_signed=None, p=0.1, max_bond
 
     grid = build_site_grid(R_min, R_max, C_min, C_max,
                            m_grid, region_Q, region_A, p)
-    return bMPS_contract(grid, max_bond=max_bond)
+    return bMPS_contract(grid, max_bond=max_bond, return_log=return_log)
 
 
-def bMPS_prob_with_parity(m_grid, region_Q, region_A, pi_A, p=0.1, max_bond=16):
+
+def bMPS_prob_with_parity(m_grid, region_Q, region_A, pi_A, p=0.1,
+                          max_bond=16, return_log=False):
     """
     Pr(m_Q, π(m_A) = pi_A) via Fourier parity trick using bMPS.
+
+    If return_log=True, return the probability in signed log form.
     """
-    prob_Q      = bMPS_contract_region(m_grid, region_Q, None,      p, max_bond)
-    prob_signed = bMPS_contract_region(m_grid, region_Q, region_A,  p, max_bond)
-    return 0.5 * (prob_Q + ((-1) ** int(pi_A)) * prob_signed)
+    sign_Q, log_Q = bMPS_contract_region(
+        m_grid, region_Q, None, p, max_bond, return_log=True
+    )
+    sign_signed, log_signed = bMPS_contract_region(
+        m_grid, region_Q, region_A, p, max_bond, return_log=True
+    )
+
+    sign_signed *= (-1) ** int(pi_A)
+    sign_prob, log_prob = _signed_logsumexp(log_Q, sign_Q, log_signed, sign_signed)
+
+    if sign_prob != 0.0 and np.isfinite(log_prob):
+        log_prob -= LOG_TWO
+
+    if return_log:
+        return sign_prob, log_prob
+    return _scalar_from_signed_log(sign_prob, log_prob)
 
 
 # ---------------------------------------------------------------------------
@@ -302,31 +415,41 @@ def bMPS_prob_with_parity(m_grid, region_Q, region_A, pi_A, p=0.1, max_bond=16):
 
 if __name__ == '__main__':
     import time
-    from .CMI_calculation import _contract, _prob_with_parity, define_geometry_geom1
+    from .cmi_calculation import _contract, define_geometry_geom1
 
     np.random.seed(42)
     L, p, r = 10, 0.1, 2
     A, B, C = define_geometry_geom1(L, r)
-    AB = A | B;  BC = B | C;  ABC = A | B | C
+    AB = A | B
+    BC = B | C
+    ABC = A | B | C
 
-    h = np.random.choice([0, 1], size=(L+1, L), p=[1-p, p])
-    v = np.random.choice([0, 1], size=(L, L+1), p=[1-p, p])
+    h = np.random.choice([0, 1], size=(L + 1, L), p=[1 - p, p])
+    v = np.random.choice([0, 1], size=(L, L + 1), p=[1 - p, p])
     m = (h[:L] + h[1:] + v[:, :L] + v[:, 1:]) % 2
     pi_A = int(sum(m[i, j] for i, j in A) % 2)
 
     print('Correctness check — exact vs bMPS (max_bond=16):')
     for label, region_Q, region_A_signed in [
-        ('Pr(m_ABC)',       ABC, None),
-        ('Pr(m_AB)',        AB,  None),
-        ('Pr(m_B)',         B,   None),
-        ('Pr_signed(m_B)',  B,   A   ),
-        ('Pr(m_BC)',        BC,  None),
-        ('Pr_signed(m_BC)', BC,  A   ),
+        ('Pr(m_ABC)', ABC, None),
+        ('Pr(m_AB)', AB, None),
+        ('Pr(m_B)', B, None),
+        ('Pr_signed(m_B)', B, A),
+        ('Pr(m_BC)', BC, None),
+        ('Pr_signed(m_BC)', BC, A),
     ]:
         exact = _contract(m, region_Q, region_A_signed=region_A_signed, p=p)
         approx = bMPS_contract_region(m, region_Q, region_A_signed, p, max_bond=16)
         rel = abs(exact - approx) / (abs(exact) + 1e-30)
         print(f'  {label:<25} exact={exact:.6e}  bMPS={approx:.6e}  rel_err={rel:.2e}')
+
+    sign_prob, log_prob = bMPS_prob_with_parity(
+        m, B, A, pi_A, p=p, max_bond=16, return_log=True
+    )
+    print(
+        f"\nParity probability in signed-log form: sign={sign_prob:+.0f}, "
+        f"logabs={log_prob:.6f}"
+    )
 
     # Speed comparison: 50 samples
     N = 50
@@ -334,26 +457,22 @@ if __name__ == '__main__':
 
     t0 = time.perf_counter()
     for _ in range(N):
-        h = np.random.choice([0,1], size=(L+1,L), p=[1-p,p])
-        v = np.random.choice([0,1], size=(L,L+1), p=[1-p,p])
-        m = (h[:L]+h[1:]+v[:,:L]+v[:,1:]) % 2
+        h = np.random.choice([0, 1], size=(L + 1, L), p=[1 - p, p])
+        v = np.random.choice([0, 1], size=(L, L + 1), p=[1 - p, p])
+        m = (h[:L] + h[1:] + v[:, :L] + v[:, 1:]) % 2
         _contract(m, ABC, p=p)
-        _contract(m, AB, p=p)
-        _prob_with_parity(m, B, A, 0, p=p)
-        _prob_with_parity(m, BC, A, 0, p=p)
-    t_exact = (time.perf_counter() - t0) / N * 1000
+    t_exact = time.perf_counter() - t0
 
     t0 = time.perf_counter()
     for _ in range(N):
-        h = np.random.choice([0,1], size=(L+1,L), p=[1-p,p])
-        v = np.random.choice([0,1], size=(L,L+1), p=[1-p,p])
-        m = (h[:L]+h[1:]+v[:,:L]+v[:,1:]) % 2
-        pi = int(sum(m[i,j] for i,j in A) % 2)
+        h = np.random.choice([0, 1], size=(L + 1, L), p=[1 - p, p])
+        v = np.random.choice([0, 1], size=(L, L + 1), p=[1 - p, p])
+        m = (h[:L] + h[1:] + v[:, :L] + v[:, 1:]) % 2
         bMPS_contract_region(m, ABC, None, p)
-        bMPS_contract_region(m, AB,  None, p)
-        bMPS_prob_with_parity(m, B,  A, pi, p)
-        bMPS_prob_with_parity(m, BC, A, pi, p)
-    t_bMPS = (time.perf_counter() - t0) / N * 1000
+        bMPS_contract_region(m, AB, None, p)
+        bMPS_prob_with_parity(m, B, A, pi_A, p)
+        bMPS_prob_with_parity(m, BC, A, pi_A, p)
+    t_bmps = time.perf_counter() - t0
 
-    print(f'  Exact: {t_exact:.1f} ms/sample')
-    print(f'  bMPS:  {t_bMPS:.1f} ms/sample  ({t_exact/t_bMPS:.1f}x)')
+    print(f'  exact TN total: {t_exact:.3f}s  ({1e3 * t_exact / N:.1f} ms/sample)')
+    print(f'  bMPS total:     {t_bmps:.3f}s  ({1e3 * t_bmps / N:.1f} ms/sample)')

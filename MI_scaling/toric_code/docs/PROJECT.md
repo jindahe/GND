@@ -10,12 +10,12 @@
 
 | 文件 | 功能 |
 |---|---|
-| `H_calculation.py` | 用蒙特卡洛 + 张量网络收缩计算 `H(m)`（anyon 分布的 Shannon 熵） |
-| `Syndrome_pure_error` | syndrome 纯错误基准测试 |
+| `h_calculation.py` | 用蒙特卡洛 + 张量网络收缩计算 `H(m)`（anyon 分布的 Shannon 熵） |
+| `syndrome_pure_error.py` | syndrome 纯错误基准测试 |
 
 ---
 
-## H_calculation.py 详细分析
+## h_calculation.py 详细分析
 
 ### 物理背景
 
@@ -107,7 +107,7 @@ calculate_H_m(L=3, p=0.1, num_samples=10000)
 ## 运行方式
 
 ```bash
-python H_calculation.py
+python h_calculation.py
 ```
 
 依赖安装：
