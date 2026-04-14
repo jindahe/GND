@@ -316,6 +316,8 @@ def calculate_CMI(L=10, p=0.1, r=2, num_samples=500, seed=None, verbose=True):
 
     CMI_sum = ACCUM_DTYPE(0.0)
     skipped = 0
+    projection_used = 0
+    projection_clamped = 0
 
     for s in range(num_samples):
         # 1. Sample error configuration e
@@ -371,6 +373,14 @@ def calculate_CMI(L=10, p=0.1, r=2, num_samples=500, seed=None, verbose=True):
         tag = "WARNING: " if frac > 0.05 else ""
         print(f"  {tag}Skipped {skipped}/{num_samples} ({100*frac:.1f}%)")
 
+    if verbose:
+        denom = max(1, 2 * num_samples)
+        frac = 100.0 * projection_clamped / denom
+        print(
+            f"  Projection usage: {projection_used}/{denom} parity terms, "
+            f"clamped={projection_clamped}/{denom} ({frac:.2f}%)"
+        )
+
     if valid == 0:
         if verbose:
             print("ERROR: no valid samples.")
@@ -384,13 +394,19 @@ def calculate_CMI(L=10, p=0.1, r=2, num_samples=500, seed=None, verbose=True):
 
 
 def calculate_CMI_bMPS(L=None, p=0.1, r=6, num_samples=500,
-                       max_bond=16, seed=None, verbose=True):
+                       max_bond=16, seed=None, verbose=True,
+                       stabilise_projection=False, projection_eps=1e-6,
+                       projection_guard=0.05):
     """
     Estimate I(A:C|B) using bMPS contraction (P3/P4).
 
     P4 upgrade: the bMPS backend now exposes signed log-probabilities, so the
     estimator accumulates log-probabilities directly rather than applying
     np.log to potentially underflowed scalar probabilities.
+
+    stabilise_projection/projection_eps/projection_guard are passed to bMPS
+    parity combination for optional guarded projection near |Pr_signed|≈Pr.
+    This is disabled by default to avoid bias from aggressive clipping.
 
     L defaults to the minimum lattice that fits the ABC region: L = 2 + 4*r.
     """
@@ -413,6 +429,8 @@ def calculate_CMI_bMPS(L=None, p=0.1, r=6, num_samples=500,
 
     CMI_sum = ACCUM_DTYPE(0.0)
     skipped = 0
+    projection_used = 0
+    projection_clamped = 0
 
     for s in range(num_samples):
         h_err = np.random.choice([0, 1], size=(L + 1, L), p=[1 - p, p])
@@ -427,12 +445,23 @@ def calculate_CMI_bMPS(L=None, p=0.1, r=6, num_samples=500,
         sign_AB, log_prob_AB = bMPS_contract_region(
             m_grid, AB, None, p, max_bond, return_log=True
         )
-        sign_B_pi, log_prob_B_pi = bMPS_prob_with_parity(
-            m_grid, B, A, pi_A, p, max_bond, return_log=True
+        sign_B_pi, log_prob_B_pi, meta_B = bMPS_prob_with_parity(
+            m_grid, B, A, pi_A, p, max_bond, return_log=True,
+            stabilise_projection=stabilise_projection,
+            projection_eps=projection_eps,
+            projection_guard=projection_guard,
+            return_meta=True,
         )
-        sign_BC_pi, log_prob_BC_pi = bMPS_prob_with_parity(
-            m_grid, BC, A, pi_A, p, max_bond, return_log=True
+        sign_BC_pi, log_prob_BC_pi, meta_BC = bMPS_prob_with_parity(
+            m_grid, BC, A, pi_A, p, max_bond, return_log=True,
+            stabilise_projection=stabilise_projection,
+            projection_eps=projection_eps,
+            projection_guard=projection_guard,
+            return_meta=True,
         )
+
+        projection_used += int(meta_B["projection_used"]) + int(meta_BC["projection_used"])
+        projection_clamped += int(meta_B["projection_clamped"]) + int(meta_BC["projection_clamped"])
 
         log_prob_ABC = _positive_log_from_signed_log(sign_ABC, log_prob_ABC)
         log_prob_AB = _positive_log_from_signed_log(sign_AB, log_prob_AB)
@@ -458,6 +487,14 @@ def calculate_CMI_bMPS(L=None, p=0.1, r=6, num_samples=500,
         frac = skipped / num_samples
         tag = "WARNING: " if frac > 0.05 else ""
         print(f"  {tag}Skipped {skipped}/{num_samples} ({100*frac:.1f}%)")
+
+    if verbose:
+        denom = max(1, 2 * num_samples)
+        frac = 100.0 * projection_clamped / denom
+        print(
+            f"  Projection usage: {projection_used}/{denom} parity terms, "
+            f"clamped={projection_clamped}/{denom} ({frac:.2f}%)"
+        )
 
     if valid == 0:
         if verbose:

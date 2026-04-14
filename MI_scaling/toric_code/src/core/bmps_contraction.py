@@ -27,6 +27,7 @@ from .cmi_calculation import Q0, Q1, Q_minus, Q_plus
 
 LOG_TWO = float(np.log(2.0))
 LOG_MAX_FLOAT64 = float(np.log(np.finfo(np.float64).max))
+LOG_MIN_POSITIVE = float(np.log(np.finfo(np.float64).tiny))
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +83,23 @@ def _scalar_from_signed_log(sign, logabs):
     if logabs > LOG_MAX_FLOAT64:
         return float(sign) * float('inf')
     return float(sign) * float(np.exp(logabs))
+
+
+def _signed_ratio_over_positive_base(sign_num, logabs_num, logabs_den):
+    """
+    Compute num/den where den is strictly positive and given in log form.
+
+    Returns a finite float when possible; saturates to large magnitude if
+    exponent exceeds float64 range.
+    """
+    if sign_num == 0.0 or (not np.isfinite(logabs_num)) or (not np.isfinite(logabs_den)):
+        return 0.0
+
+    delta = float(logabs_num - logabs_den)
+    if delta > -LOG_MIN_POSITIVE:
+        # |ratio| would overflow float64; saturate for downstream clipping.
+        return float(sign_num) * float(np.finfo(np.float64).max)
+    return float(sign_num) * float(np.exp(delta))
 
 
 # ---------------------------------------------------------------------------
@@ -385,11 +403,18 @@ def bMPS_contract_region(m_grid, region_Q, region_A_signed=None, p=0.1,
 
 
 def bMPS_prob_with_parity(m_grid, region_Q, region_A, pi_A, p=0.1,
-                          max_bond=16, return_log=False):
+                          max_bond=16, return_log=False,
+                          stabilise_projection=False, projection_eps=1e-6,
+                          projection_guard=0.05, return_meta=False):
     """
     Pr(m_Q, π(m_A) = pi_A) via Fourier parity trick using bMPS.
 
     If return_log=True, return the probability in signed log form.
+
+    stabilise_projection:
+      Optional guarded projection of Pr_signed/Pr into [-1,1]. This can
+      stabilise mild truncation overshoots near the physical boundary, but is
+      disabled by default to avoid introducing bias from heavy clipping.
     """
     sign_Q, log_Q = bMPS_contract_region(
         m_grid, region_Q, None, p, max_bond, return_log=True
@@ -399,14 +424,46 @@ def bMPS_prob_with_parity(m_grid, region_Q, region_A, pi_A, p=0.1,
     )
 
     sign_signed *= (-1) ** int(pi_A)
-    sign_prob, log_prob = _signed_logsumexp(log_Q, sign_Q, log_signed, sign_signed)
+    meta = {
+        "projection_used": False,
+        "projection_clamped": False,
+        "raw_ratio": float("nan"),
+        "clipped_ratio": float("nan"),
+    }
 
-    if sign_prob != 0.0 and np.isfinite(log_prob):
-        log_prob -= LOG_TWO
+    can_project = False
+    ratio = float("nan")
+    if stabilise_projection and sign_Q > 0.0 and np.isfinite(log_Q):
+        ratio = _signed_ratio_over_positive_base(sign_signed, log_signed, log_Q)
+        guard = float(projection_guard)
+        can_project = np.isfinite(ratio) and (-1.0 - guard <= ratio <= 1.0 + guard)
+
+    if can_project:
+        lo = -1.0 + float(projection_eps)
+        hi = 1.0 - float(projection_eps)
+        clipped = float(np.clip(ratio, lo, hi))
+
+        meta["projection_used"] = True
+        meta["projection_clamped"] = bool(clipped != ratio)
+        meta["raw_ratio"] = float(ratio)
+        meta["clipped_ratio"] = float(clipped)
+
+        sign_prob = 1.0
+        log_prob = float(log_Q + np.log1p(clipped) - LOG_TWO)
+    else:
+        sign_prob, log_prob = _signed_logsumexp(log_Q, sign_Q, log_signed, sign_signed)
+        if sign_prob != 0.0 and np.isfinite(log_prob):
+            log_prob -= LOG_TWO
+
+    if return_meta:
+        if return_log:
+            return sign_prob, log_prob, meta
+        return _scalar_from_signed_log(sign_prob, log_prob), meta
 
     if return_log:
         return sign_prob, log_prob
     return _scalar_from_signed_log(sign_prob, log_prob)
+
 
 
 # ---------------------------------------------------------------------------
