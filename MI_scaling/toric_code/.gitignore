@@ -2,3 +2,12 @@ __pycache__/
 *.pyc
 .claude/
 bMPS_sweep.log
+.venv/
+.codex
+outputs/P9_logs/
+outputs/CMI_r1to5_chi64*
+outputs/CMI_r6_chi96*
+outputs/CMI_r6_p015_chi*_verify*
+outputs/CMI_r7r8_chi128_verify*
+outputs/CMI_r8_chi128_w*_calib*
+outputs/CMI_tmp_sanity*

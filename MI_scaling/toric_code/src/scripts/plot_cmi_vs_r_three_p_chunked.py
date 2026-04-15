@@ -134,6 +134,11 @@ def run_one_chunk(task):
                     seed=seed,
                     verbose=False,
                 )
+            if cmi is None:
+                raise RuntimeError(
+                    f"no valid samples: p={p}, r={r}, chunk_id={chunk_id}, "
+                    f"method={cfg['method']}, chi={cfg['max_bond']}"
+                )
             elapsed = time.perf_counter() - t0
             return {
                 "p": p,

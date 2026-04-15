@@ -16,6 +16,14 @@
 在仓库根目录执行：
 
 ```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+然后运行：
+
+```bash
 python -m src.scripts.plot_cmi_vs_p --help
 ```
 
@@ -59,4 +67,3 @@ python -m src.scripts.plot_cmi_vs_r_three_p_fast2h
 - 开发计划与并行方案：`docs/PLAN.md`
 - 物理公式与解释：`docs/PHYSICS.md`
 - 文件整合说明：`docs/FOLDER_INTEGRATION.md`
-
