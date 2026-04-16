@@ -1,0 +1,2 @@
+p,r,max_bond,count_chunks,total_samples,cmi_mean,cmi_sem,status,note
+0.150000,7,256,96,960,-0.002296066672231027,0.001132826368253245,partial,interrupted_after_96_of_100_chunks
