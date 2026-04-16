@@ -1,0 +1,31 @@
+action,old_path,new_path,note
+rename,outputs/CMI_P9_best_r1to6_eq12.png,outputs/CMI_final_r1to6_best_eq12_2026-04-16.png,final eq12 figure
+rename,outputs/CMI_r1to5_chi64.png,outputs/CMI_topup_p015_r5_chi64_N20000.png,single-point topup figure
+rename,outputs/CMI_r6_chi96.png,outputs/CMI_topup_p005_r6_chi96_N20000.png,single-point topup figure
+rename,outputs/CMI_r6_p015_chi128_verify.png,outputs/CMI_verify_p015_r6_chi128to192_N1000_blankplot.png,canonical blank plot for chi128/160/192 verify runs
+delete,outputs/CMI_r6_p015_chi160_verify.png,,duplicate blank verify plot
+delete,outputs/CMI_r6_p015_chi192_verify.png,,duplicate blank verify plot
+rename,outputs/CMI_r6_p015_chi256_verify.png,outputs/CMI_verify_p015_r6_chi256_N5000.png,selected chi256 verify figure
+rename,outputs/CMI_r7r8_chi128_verify.png,outputs/CMI_gate_r7to8_chi128_N500.png,gate figure
+rename,outputs/CMI_r8_chi128_w96_calib.png,outputs/CMI_calib_r8_chi128_w96.png,worker calibration figure
+rename,outputs/CMI_r8_chi128_w96_calib_clean.png,outputs/CMI_calib_r8_chi128_clean.png,canonical clean calibration figure
+delete,outputs/CMI_r8_chi128_w120_calib_clean.png,,duplicate clean calibration figure
+delete,outputs/CMI_r8_chi128_w128_calib_clean.png,,duplicate clean calibration figure
+rename,outputs/CMI_tmp_sanity.png,outputs/CMI_sanity_p015_r7_chi128.png,sanity figure
+rename,outputs/CMI_vs_p_L10.png,outputs/CMI_legacy_L10_r1to3_vs_p.png,legacy figure
+rename,outputs/CMI_vs_p_r1to6.png,outputs/CMI_scan_L10_r1to6_vs_p.png,scan figure
+rename,outputs/surface_code_MI_2D.png,outputs/CMI_reference_surface_code_MI_2D.png,reference figure
+rename,outputs/P9_logs/P9_calib_w120_clean.log,outputs/P9_logs/CMI_calib_r8_chi128_w120_clean.log,clean calibration log
+rename,outputs/P9_logs/P9_calib_w128_clean.log,outputs/P9_logs/CMI_calib_r8_chi128_w128_clean.log,clean calibration log
+rename,outputs/P9_logs/P9_calib_w96.log,outputs/P9_logs/CMI_calib_r8_chi128_w96.log,calibration log
+rename,outputs/P9_logs/P9_calib_w96_clean.log,outputs/P9_logs/CMI_calib_r8_chi128_w96_clean.log,clean calibration log
+rename,outputs/P9_logs/P9_prod_r1to5_chi64.log,outputs/P9_logs/CMI_stageP9_r1to5_chi64.log,production log
+rename,outputs/P9_logs/P9_prod_r6_chi96.log,outputs/P9_logs/CMI_stageP9_r6_chi96.log,production log
+rename,outputs/P9_logs/P9_r6_p015_chi128_verify.log,outputs/P9_logs/CMI_verify_p015_r6_chi128_N1000.log,verify log
+rename,outputs/P9_logs/P9_r6_p015_chi160_verify.log,outputs/P9_logs/CMI_verify_p015_r6_chi160_N1000.log,verify log
+rename,outputs/P9_logs/P9_r6_p015_chi192_verify.log,outputs/P9_logs/CMI_verify_p015_r6_chi192_N1000.log,verify log
+rename,outputs/P9_logs/P9_r6_p015_chi256_verify.log,outputs/P9_logs/CMI_verify_p015_r6_chi256_N1000.log,initial chi256 verify log
+rename,outputs/P9_logs/P9_r6_p015_chi256_verify_extend.log,outputs/P9_logs/CMI_verify_p015_r6_chi256_N5000_extend.log,extended chi256 verify log
+rename,outputs/P9_logs/P9_stage1_verify.log,outputs/P9_logs/CMI_gate_r7to8_chi128_N500.log,gate log
+rename,outputs/P9_logs/run_today_plan_2026-04-16.sh,outputs/P9_logs/CMI_topup_run_2026-04-16.sh,topup runner script
+rename,outputs/P9_logs/today_plan_2026-04-16.log,outputs/P9_logs/CMI_topup_run_2026-04-16.log,topup run log

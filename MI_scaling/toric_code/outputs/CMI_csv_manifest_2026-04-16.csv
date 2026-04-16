@@ -1,0 +1,35 @@
+action,old_path,new_path,note
+rename,outputs/CMI_r1to6_clean_summary_2026-04-16.csv,outputs/CMI_final_r1to6_best_summary_2026-04-16.csv,final curated r=1..6 table
+rename,outputs/CMI_r1to5_chi64_raw.csv,outputs/CMI_stageP9_r1to5_chi64_raw.csv,stage P9 raw data for r=1..5
+rename,outputs/CMI_r6_chi96_raw.csv,outputs/CMI_stageP9_r6_chi96_raw.csv,stage P9/topup raw data for r=6 chi=96
+rename,outputs/CMI_r1to5_chi64_summary.csv,outputs/CMI_topup_p015_r5_chi64_N20000_summary.csv,single-point topup summary
+rename,outputs/CMI_r6_chi96_summary.csv,outputs/CMI_topup_p005_r6_chi96_N20000_summary.csv,single-point topup summary
+delete,outputs/CMI_P9_best_r1to6_eq12_summary.csv,,superseded by final curated summary
+rename,outputs/CMI_r6_p015_chi128_verify_raw.csv,outputs/CMI_verify_p015_r6_chi128_N1000_raw.csv,verification raw
+rename,outputs/CMI_r6_p015_chi128_verify_summary.csv,outputs/CMI_verify_p015_r6_chi128_N1000_summary.csv,verification summary
+rename,outputs/CMI_r6_p015_chi160_verify_raw.csv,outputs/CMI_verify_p015_r6_chi160_N1000_raw.csv,verification raw
+rename,outputs/CMI_r6_p015_chi160_verify_summary.csv,outputs/CMI_verify_p015_r6_chi160_N1000_summary.csv,verification summary
+rename,outputs/CMI_r6_p015_chi192_verify_raw.csv,outputs/CMI_verify_p015_r6_chi192_N1000_raw.csv,verification raw
+rename,outputs/CMI_r6_p015_chi192_verify_summary.csv,outputs/CMI_verify_p015_r6_chi192_N1000_summary.csv,verification summary
+rename,outputs/CMI_r6_p015_chi256_verify_raw.csv,outputs/CMI_verify_p015_r6_chi256_N5000_raw.csv,verification raw
+rename,outputs/CMI_r6_p015_chi256_verify_summary.csv,outputs/CMI_verify_p015_r6_chi256_N5000_summary.csv,verification summary
+rename,outputs/CMI_r7r8_chi128_verify_raw.csv,outputs/CMI_gate_r7to8_chi128_N500_raw.csv,gate raw
+rename,outputs/CMI_r7r8_chi128_verify_summary.csv,outputs/CMI_gate_r7to8_chi128_N500_summary.csv,gate summary
+rename,outputs/CMI_r7r8_chi128_verify_gate_summary.csv,outputs/CMI_gate_r7to8_chi128_N500_decision_summary.csv,gate decision summary
+rename,outputs/CMI_r7r8_chi128_verify_failed.csv,outputs/CMI_gate_r7to8_chi128_N500_failed.csv,gate failures
+rename,outputs/CMI_r8_chi128_w96_calib_raw.csv,outputs/CMI_calib_r8_chi128_w96_raw.csv,worker calibration raw
+rename,outputs/CMI_r8_chi128_w96_calib_summary.csv,outputs/CMI_calib_r8_chi128_w96_summary.csv,worker calibration summary
+rename,outputs/CMI_r8_chi128_w96_calib_failed.csv,outputs/CMI_calib_r8_chi128_w96_failed.csv,worker calibration failures
+rename,outputs/CMI_r8_chi128_w96_calib_clean_raw.csv,outputs/CMI_calib_r8_chi128_w96_clean_raw.csv,clean worker calibration raw
+rename,outputs/CMI_r8_chi128_w120_calib_clean_raw.csv,outputs/CMI_calib_r8_chi128_w120_clean_raw.csv,clean worker calibration raw
+rename,outputs/CMI_r8_chi128_w128_calib_clean_raw.csv,outputs/CMI_calib_r8_chi128_w128_clean_raw.csv,clean worker calibration raw
+rename,outputs/CMI_r8_chi128_w120_calib_clean_summary.csv,outputs/CMI_calib_r8_chi128_clean_summary.csv,canonical clean summary
+rename,outputs/CMI_r8_chi128_w120_calib_clean_failed.csv,outputs/CMI_calib_r8_chi128_clean_failed.csv,canonical clean failures
+delete,outputs/CMI_r8_chi128_w96_calib_clean_summary.csv,,duplicate clean summary
+delete,outputs/CMI_r8_chi128_w128_calib_clean_summary.csv,,duplicate clean summary
+delete,outputs/CMI_r8_chi128_w96_calib_clean_failed.csv,,duplicate clean failed
+delete,outputs/CMI_r8_chi128_w128_calib_clean_failed.csv,,duplicate clean failed
+rename,outputs/CMI_results_L10.csv,outputs/CMI_legacy_L10_r1to3_vs_p.csv,legacy L10 sweep
+rename,outputs/CMI_vs_p_r1to6.csv,outputs/CMI_scan_L10_r1to6_vs_p.csv,L10 scan r=1..6
+rename,outputs/CMI_tmp_sanity_raw.csv,outputs/CMI_sanity_p015_r7_chi128_raw.csv,sanity raw
+rename,outputs/CMI_tmp_sanity_summary.csv,outputs/CMI_sanity_p015_r7_chi128_summary.csv,sanity summary
