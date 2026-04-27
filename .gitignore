@@ -7,3 +7,11 @@ decoding/lo_rate
 
 module/3d_sc
 
+# Local environment and tooling
+.codex
+.codex/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
