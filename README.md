@@ -1,41 +1,51 @@
-
 # GenerativeDecoder
-Training a autoregressive network to do quantum error correction.
+
+Repository for autoregressive quantum error-correction decoders.
+
+The original project structure is still present in the repository, but the recommended entrypoint is
+the cleaned project folder [`generative_decoder/`](/home/jinboyu/GND/generative_decoder), which
+reorganizes everything outside `MI_scaling/` into a smaller self-contained layout.
 
 Link to the article: https://doi.org/10.48550/arXiv.2503.21374
 
-## Generate Surface Code d=3 k=1:
+## Recommended Layout
 
-```python
-python code_generator.py --d 3 --k 1 --seed 0 -c_type 'sur'
-```
-if k> k' , where k' is the number of logical qubits, will remove stabilizers randomly from origin code.
+- [`generative_decoder/code/`](/home/jinboyu/GND/generative_decoder/code): pre-generated code instances
+- [`generative_decoder/module/`](/home/jinboyu/GND/generative_decoder/module): core code definitions, error model, GF(2) algebra, MADE / NADE / TraDE
+- [`generative_decoder/decoding/`](/home/jinboyu/GND/generative_decoder/decoding): code generation, training, forward decoding, MWPM and BP+OSD baselines
 
-## Training a MADE or TraDE and save the network
+The clean copy removes duplicated or unused files from the main path, including older model variants,
+ad hoc experiment scripts, and circuit-specific helpers that were not part of the code-capacity workflow.
 
-### MADE
-```python
-python training.py -save True -n_type 'made' -c_type 'sur' -n 13 -d 3 -k 1 -seed 0 -er 0.189 -device 'cuda:0' -batch 10000 -epoch 50000 -depth 3 -width 20
-```
-### TraDE
-```python
-python training.py -save True -n_type 'trade' -c_type 'sur' -n 13 -d 3 -k 1 -seed 0 -er 0.189 -device 'cuda:0' -batch 10000 -epoch 50000 -d_model 128 -n_heads 4 -d_ff 512 -n_layers 2 
-```
+## Quick Start
 
-```python
-python Block_training.py -save True -n_type 'trade' -c_type 'qcc' -n 90 -d 10 -k 8 -seed 0 -er 0.13 -device 'cuda:1' -batch 10000 -epoch 500000 -d_model 256 -n_heads 4 -d_ff 256 -n_layers 3 -dtype 'float32'
-```
-## Correction
+Generate a surface code:
 
-### Loading network and forward to do error correction and save the logical error rate
-
-### depolarized
-```python
-python forward_decoding.py -save True -c_type 'sur' -n 13 -d 3 -k 1 -seed 0  -device 'cuda:0' -n_type 'made' -e_model 'dep' -trials 10000 -er 0.189
+```bash
+cd generative_decoder/decoding
+python code_generator.py -c_type sur -n 13 -d 3 -k 1 -seed 0
 ```
 
-## Decoding time
+Train a MADE decoder:
 
-```python
-python time.py -n_type 'made' -c_type 'rsur' -n 121 -d 11 -trials 100 -device 'cuda:0' -er 0.189
+```bash
+cd generative_decoder/decoding
+python training.py -save True -n_type made -c_type sur -n 13 -d 3 -k 1 -seed 0 -er 0.189 -device cpu -batch 1000 -epoch 1000 -depth 3 -width 20
 ```
+
+Run forward decoding:
+
+```bash
+cd generative_decoder/decoding
+python forward_decoding.py -n_type made -c_type sur -n 13 -d 3 -k 1 -seed 0 -e_model dep -device cpu -trials 1000 -er 0.189
+```
+
+Run baselines:
+
+```bash
+cd generative_decoder/decoding
+python mwpm.py -c_type sur -n 13 -d 3 -k 1 -seed 0 -e_model dep -trials 1000
+python bposd.py -c_type sur -n 13 -d 3 -k 1 -seed 0 -trials 1000
+```
+
+More detail is in [`generative_decoder/README.md`](/home/jinboyu/GND/generative_decoder/README.md).
