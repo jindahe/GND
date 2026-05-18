@@ -130,10 +130,10 @@ class TraDE_binary(nn.Module):
         # print(self.encoder)
         self.fc_out = nn.Linear(self.d_model, 1)
 
-        self.register_buffer('mask', torch.ones(self.n, self.n))
-        self.mask = torch.tril(self.mask, diagonal=0)
-        self.mask = self.mask.masked_fill(self.mask == 0, float('-inf'))#.masked_fill(self.mask == 1, float(0.0))
-        #self.mask[0, 0] = 0
+        mask = torch.triu(torch.ones(self.n, self.n), diagonal=1)
+        mask = mask.masked_fill(mask == 1, float("-inf"))
+        mask = mask.masked_fill(mask == 0, 0.0)
+        self.register_buffer('mask', mask)
     def forward(self, x):
         x = torch.cat((torch.ones(x.size(0), 1, device=self.device), x[:, :-1]), dim=1)
         x = F.relu(self.fc_in(x.to(int)))  # (batch_size, n, d_model)
@@ -142,9 +142,11 @@ class TraDE_binary(nn.Module):
         return torch.sigmoid(self.fc_out(x)).squeeze(2)
 
     def log_prob(self, x):
+        return self.token_log_prob(x).sum(dim=1)
+
+    def token_log_prob(self, x):
         x_hat = self.forward(x)
-        log_prob = torch.log(x_hat+1e-30) * x + torch.log(1 - x_hat+1e-30) * (1 - x)
-        return log_prob.sum(dim=1)
+        return torch.log(x_hat + 1e-30) * x + torch.log(1 - x_hat + 1e-30) * (1 - x)
     
     def samples(self, batch_size):
         samples = torch.zeros(batch_size, self.n, device=self.device, dtype=torch.float64)#torch.randint(0, 2, size=(batch_size, self.n), dtype=torch.float64, device=self.device)
@@ -152,6 +154,9 @@ class TraDE_binary(nn.Module):
             x_hat = self.forward(samples)
             samples[:, i] = torch.bernoulli(x_hat[:, i])
         return samples
+
+    def sample(self, batch_size):
+        return self.samples(batch_size)
 
     def partial_samples(self, n_s, condition, device, dtype):
         with torch.no_grad():
@@ -207,10 +212,10 @@ class TraDE(nn.Module):
         self.encoder = nn.TransformerEncoder(encoder_layer, self.n_layers)
         self.fc_out = nn.Linear(self.d_model, 2**self.nb)
 
-        self.register_buffer('mask', torch.ones(self.n, self.n))
-        self.mask = torch.tril(self.mask, diagonal=0)
-        self.mask = self.mask.masked_fill(self.mask == 0, float('-inf'))#.masked_fill(self.mask == 1, float(0.0))
-        #self.mask[0, 0] = 0
+        mask = torch.triu(torch.ones(self.n, self.n), diagonal=1)
+        mask = mask.masked_fill(mask == 1, float("-inf"))
+        mask = mask.masked_fill(mask == 0, 0.0)
+        self.register_buffer('mask', mask)
     def forward(self, x):
         x = torch.cat((torch.ones(x.size(0), 1, device=self.device), x[:, :-1]), dim=1)
         x = F.relu(self.fc_in(x.to(int)))  # (batch_size, n, d_model)

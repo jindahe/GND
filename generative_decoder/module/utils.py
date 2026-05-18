@@ -30,6 +30,100 @@ def read_code(d, k, n, seed=0, c_type="sur"):
     return torch.load(path)
 
 
+def toric_syndrome_coords(d):
+    coords = []
+    # Keep the same independent-generator ordering as Toric.get_generators_of_stabilizers():
+    # first all plaquette checks in row-major order, excluding the first cell,
+    # then all star checks in row-major order, excluding the last cell.
+    for row in range(d):
+        for col in range(d):
+            if row == 0 and col == 0:
+                continue
+            coords.append({
+                "index": len(coords),
+                "kind": "plaquette",
+                "row": row,
+                "col": col,
+                "x": col,
+                "y": row,
+            })
+
+    for row in range(d):
+        for col in range(d):
+            if row == d - 1 and col == d - 1:
+                continue
+            coords.append({
+                "index": len(coords),
+                "kind": "star",
+                "row": row,
+                "col": col,
+                "x": col,
+                "y": row,
+            })
+
+    return coords
+
+
+def toric_bipartition(d, axis="x", cut=None):
+    if axis not in {"x", "y"}:
+        raise ValueError(f"Unsupported axis: {axis}")
+
+    coords = toric_syndrome_coords(d)
+    cut = d // 2 if cut is None else cut
+
+    idx_a = [item["index"] for item in coords if item[axis] < cut]
+    idx_b = [item["index"] for item in coords if item[axis] >= cut]
+    if not idx_a or not idx_b:
+        raise ValueError(f"Cut {cut} along axis {axis} produces an empty partition for d={d}")
+
+    return {
+        "coords": coords,
+        "axis": axis,
+        "cut": cut,
+        "idx_A": idx_a,
+        "idx_B": idx_b,
+        "order_AB": idx_a + idx_b,
+        "order_BA": idx_b + idx_a,
+    }
+
+
+def sample_syndromes(code, error_model, n_samples, seed=0, device="cpu", dtype=torch.float32):
+    errors = error_model.generate_error(code.n, m=n_samples, seed=seed)
+    if errors.dim() == 1:
+        errors = errors.unsqueeze(0)
+
+    mod2.to(device=device, dtype=dtype)
+    syndrome = mod2.commute(errors, code.g_stabilizer)
+    if syndrome.dim() == 1:
+        syndrome = syndrome.unsqueeze(0)
+    return syndrome.to(device=device, dtype=dtype)
+
+
+def reorder_bits(samples, order):
+    if order is None:
+        return samples
+
+    index = torch.tensor(order, dtype=torch.long, device=samples.device)
+    return samples.index_select(1, index)
+
+
+def split_samples(samples, n_train, n_val, n_test, shuffle=True, seed=0):
+    total = n_train + n_val + n_test
+    if samples.size(0) != total:
+        raise ValueError(f"Expected {total} samples, got {samples.size(0)}")
+
+    if shuffle:
+        generator = torch.Generator(device="cpu")
+        generator.manual_seed(seed)
+        permutation = torch.randperm(total, generator=generator)
+        samples = samples[permutation]
+
+    train = samples[:n_train]
+    val = samples[n_train:n_train + n_val]
+    test = samples[n_train + n_val:]
+    return train, val, test
+
+
 def PCM_to_Stabilizer(pcm):
     n = int(pcm.size(1) / 2)
     stabilizer = torch.zeros_like(pcm)

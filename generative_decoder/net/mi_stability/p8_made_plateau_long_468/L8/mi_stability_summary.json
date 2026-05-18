@@ -1,0 +1,129 @@
+{
+  "record_type": "mi_stability_summary",
+  "schema_version": 1,
+  "created_at_utc": "2026-05-18T13:43:41.572524Z",
+  "script": "decoding/mi_stability_analysis.py",
+  "config": {
+    "sample_sizes": [
+      40000
+    ],
+    "eval_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "c_type": "tor",
+    "n": 128,
+    "d": 8,
+    "k": 2,
+    "seed": 0,
+    "e_model": "dep",
+    "er": 0.05,
+    "n_type": "made",
+    "device": "cuda:0",
+    "partition_axis": "x",
+    "cut": null,
+    "chunk_size": 1000,
+    "bootstrap_samples": 200,
+    "bootstrap_seed_base": 1000,
+    "save_dir": "/home/jinboyu/GND/generative_decoder/net/mi_scaling/p8_made_plateau_long_468/models"
+  },
+  "raw_points": [
+    {
+      "path": "/home/jinboyu/GND/generative_decoder/net/mi_stability/p8_made_plateau_long_468/L8/results/made_tor_n128_d8_k2_seed0_er0.05_dep_xmid_samples40000_eseed0.json",
+      "mi_samples": 40000,
+      "eval_seed": 0,
+      "bootstrap_samples": 200,
+      "bootstrap_seed": 1000,
+      "mi": 1.8666515350341797,
+      "H_AB": 37.88423156738281,
+      "H_A": 19.872024536132812,
+      "H_B": 19.87885856628418,
+      "bootstrap_std": 0.04477504962297872,
+      "bootstrap_ci95_low": 1.7834247589111327,
+      "bootstrap_ci95_high": 1.9520368576049805
+    },
+    {
+      "path": "/home/jinboyu/GND/generative_decoder/net/mi_stability/p8_made_plateau_long_468/L8/results/made_tor_n128_d8_k2_seed0_er0.05_dep_xmid_samples40000_eseed1.json",
+      "mi_samples": 40000,
+      "eval_seed": 1,
+      "bootstrap_samples": 200,
+      "bootstrap_seed": 1001,
+      "mi": 1.8783626556396484,
+      "H_AB": 37.97258758544922,
+      "H_A": 19.951587677001953,
+      "H_B": 19.899362564086914,
+      "bootstrap_std": 0.04872275581932994,
+      "bootstrap_ci95_low": 1.7851585388183593,
+      "bootstrap_ci95_high": 1.9686088562011719
+    },
+    {
+      "path": "/home/jinboyu/GND/generative_decoder/net/mi_stability/p8_made_plateau_long_468/L8/results/made_tor_n128_d8_k2_seed0_er0.05_dep_xmid_samples40000_eseed2.json",
+      "mi_samples": 40000,
+      "eval_seed": 2,
+      "bootstrap_samples": 200,
+      "bootstrap_seed": 1002,
+      "mi": 1.914804458618164,
+      "H_AB": 37.889442443847656,
+      "H_A": 19.892353057861328,
+      "H_B": 19.911893844604492,
+      "bootstrap_std": 0.04893678405197352,
+      "bootstrap_ci95_low": 1.8325748443603516,
+      "bootstrap_ci95_high": 2.0104702949523925
+    },
+    {
+      "path": "/home/jinboyu/GND/generative_decoder/net/mi_stability/p8_made_plateau_long_468/L8/results/made_tor_n128_d8_k2_seed0_er0.05_dep_xmid_samples40000_eseed3.json",
+      "mi_samples": 40000,
+      "eval_seed": 3,
+      "bootstrap_samples": 200,
+      "bootstrap_seed": 1003,
+      "mi": 1.9116783142089844,
+      "H_AB": 37.858436584472656,
+      "H_A": 19.897687911987305,
+      "H_B": 19.872426986694336,
+      "bootstrap_std": 0.04529584912052377,
+      "bootstrap_ci95_low": 1.837819480895996,
+      "bootstrap_ci95_high": 2.010172176361084
+    },
+    {
+      "path": "/home/jinboyu/GND/generative_decoder/net/mi_stability/p8_made_plateau_long_468/L8/results/made_tor_n128_d8_k2_seed0_er0.05_dep_xmid_samples40000_eseed4.json",
+      "mi_samples": 40000,
+      "eval_seed": 4,
+      "bootstrap_samples": 200,
+      "bootstrap_seed": 1004,
+      "mi": 1.934865951538086,
+      "H_AB": 37.836429595947266,
+      "H_A": 19.857255935668945,
+      "H_B": 19.914039611816406,
+      "bootstrap_std": 0.04612603610809941,
+      "bootstrap_ci95_low": 1.8422350883483887,
+      "bootstrap_ci95_high": 2.018050479888916
+    }
+  ],
+  "grouped_summary": [
+    {
+      "mi_samples": 40000,
+      "n_repeats": 5,
+      "eval_seeds": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "mi_mean": 1.9012725830078125,
+      "mi_std_across_seeds": 0.02803295847472655,
+      "mi_min": 1.8666515350341797,
+      "mi_max": 1.934865951538086,
+      "mean_bootstrap_std": 0.04677129494458107
+    }
+  ],
+  "artifacts": {
+    "result_dir": "/home/jinboyu/GND/generative_decoder/net/mi_stability/p8_made_plateau_long_468/L8/results",
+    "raw_csv": "/home/jinboyu/GND/generative_decoder/net/mi_stability/p8_made_plateau_long_468/L8/mi_stability_raw.csv",
+    "grouped_csv": "/home/jinboyu/GND/generative_decoder/net/mi_stability/p8_made_plateau_long_468/L8/mi_stability_grouped.csv",
+    "plot": "/home/jinboyu/GND/generative_decoder/net/mi_stability/p8_made_plateau_long_468/L8/mi_stability.png"
+  }
+}

@@ -1,6 +1,7 @@
 import sys
 import time
 from pathlib import Path
+import math
 
 import numpy as np
 import torch
@@ -14,6 +15,21 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from module import Abstractcode, Errormodel, Loading_code, mod2, read_code  # noqa: E402
 
+
+def build_error_rates():
+    if not args.sweep:
+        return torch.tensor([args.er], dtype=dtype)
+
+    er_min = args.er_min if args.er_min is not None else 10 ** (-1.5)
+    er_max = args.er_max if args.er_max is not None else 10 ** (-0.5)
+    return torch.logspace(np.log10(er_min), np.log10(er_max), args.n_points)
+
+
+def safe_std(values):
+    if len(values) < 2:
+        return 0.0
+    return torch.tensor(values).std().item()
+
 n, d, k, seed, c_type = args.n, args.d, args.k, args.seed, args.c_type
 trials = args.trials
 device, dtype = 'cpu', torch.float32
@@ -22,7 +38,7 @@ error_seed = args.error_seed
 mod2 = mod2(device=device, dtype=dtype)
 if c_type == 'drsur':
     defect_g = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47]#[14, 16, 18]
-    info = read_code(d=7, k=1, seed=seed, c_type='rsur')
+    info = read_code(d=7, k=1, n=n, seed=seed, c_type='rsur')
     oCode = Loading_code(info)
     g = oCode.g_stabilizer[defect_g,:]
     code = Abstractcode(g_stabilizer=g)
@@ -41,22 +57,27 @@ l[:, :n], l[:, n:] = l1[:, n:], l1[:, :n]
 
     
 L = []
-error_rate = torch.logspace(-1.5, -0.5, 10)#
+error_rate = build_error_rates()
 print(error_rate)
 tt = torch.zeros(len(error_rate))
 for i in range(len(error_rate)):
     '''generate error'''
-    E = Errormodel(error_rate[i], e_model=e_model)
+    er_value = float(error_rate[i])
+    E = Errormodel(er_value, e_model=e_model)
     errors = E.generate_error(code.n,  m=trials, seed=error_seed)
+    if errors.dim() == 1:
+        errors = errors.unsqueeze(0)
     if e_model == 'dep':
-        er = 2*error_rate[i]/3
+        er = 2 * er_value / 3
     elif e_model == 'dep2':
-        er = 8*error_rate[i]/15
+        er = 8 * er_value / 15
 
-    weights = torch.ones(2*code.n)*torch.log((1-er)/er)
+    weights = torch.ones(2 * code.n) * math.log((1 - er) / er)
     Decoder = Matching(PCM, weights=weights)
     syndrome = mod2.commute(errors, code.g_stabilizer)
-    error = mod2.rep(errors).squeeze().int().numpy()
+    if syndrome.dim() == 1:
+        syndrome = syndrome.unsqueeze(0)
+    error = mod2.rep(errors).int().numpy()
     syndrome = syndrome.numpy()
 
     correct_number = 0
@@ -82,7 +103,4 @@ for i in range(len(error_rate)):
     tt[i] = ta
     L.append(int(10000*lorate)/10000)
 print(L)
-print(tt.mean().item(), tt.std().item())    
-
-
-
+print(tt.mean().item(), safe_std(tt.tolist()))

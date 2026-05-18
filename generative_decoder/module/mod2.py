@@ -247,8 +247,10 @@ class mod2():
         r = rank(M.cpu().numpy())
         return r
     def indep(self, M):
-        # print(type(row_basis(M.cpu().numpy(force=True))))
-        return torch.from_numpy(row_basis(M.cpu().numpy()))
+        basis = row_basis(M.cpu().numpy())
+        if hasattr(basis, "toarray"):
+            basis = basis.toarray()
+        return torch.from_numpy(basis)
             
             
             

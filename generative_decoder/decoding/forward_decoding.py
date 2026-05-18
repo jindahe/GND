@@ -12,6 +12,12 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from module import Errormodel, Loading_code, MADE, NADE, TraDE_binary, mod2, read_code  # noqa: E402
 
+
+def safe_std(values):
+    if len(values) < 2:
+        return 0.0
+    return torch.tensor(values).std().item()
+
 def forward(n_s, m, van, syndrome, device, dtype, k=1, n_type='made'):
     if n_type == 'made':
         condition = syndrome*2-1
@@ -142,4 +148,4 @@ for i in range(len(error_rate)):
     lo_rate.append(logical_error_rate.cpu().item())
 print(lo_rate)
 print(std)
-print(torch.tensor(t).mean().item(), torch.tensor(t).std().item())
+print(torch.tensor(t).mean().item(), safe_std(t))

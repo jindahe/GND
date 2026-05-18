@@ -148,12 +148,22 @@ class MADE(nn.Module):
     
 
     def log_prob(self, samples):
+        return self.token_log_prob(samples).sum(dim=1)
+
+    def token_log_prob(self, samples):
         a = 1e-30
         s = self.forward(samples)
-        mask = (samples + 1)/2
-        mask = mask.view(mask.shape[0], - 1)
-        log_p = (torch.log(s+a) * mask + torch.log(1 - s+a) * (1 - mask)).sum(dim=1)
-        return log_p
+        mask = (samples + 1) / 2
+        mask = mask.view(mask.shape[0], -1)
+        return torch.log(s + a) * mask + torch.log(1 - s + a) * (1 - mask)
+
+    def sample(self, batch_size, device=None, dtype=None, max_sampling=False):
+        parameter = next(self.parameters())
+        if device is None:
+            device = parameter.device
+        if dtype is None:
+            dtype = parameter.dtype
+        return self.samples(batch_size, self.n, device=device, dtype=dtype, max_sampling=max_sampling)
     
     def partial_logp(self, samples, m):
         s = self.forward(samples)
@@ -236,4 +246,3 @@ class MADE(nn.Module):
     #     Fq = (loss.mean()/(beta*L*L)).cpu().item()
     #     print(Fq)
     #     # Fq_his.append(Fq)
-

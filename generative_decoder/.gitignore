@@ -1,3 +1,21 @@
 __pycache__/
 */__pycache__/
 net/code_capacity/*.pt
+
+# Generated syndrome datasets and checkpoints
+net/syndrome_data/
+net/syndrome_models/
+
+# Generated MI sweep artifacts: keep top-level summaries, ignore heavy internals
+net/mi_scaling/**/datasets/
+net/mi_scaling/**/models/
+net/mi_scaling/**/results/
+
+# Generated stability raw per-seed outputs: keep grouped summaries, ignore raw internals
+net/mi_stability/**/results/
+
+# Generated toric code instances from recent MI sweeps
+code/tor_n72_d6_k2_seed0
+code/tor_n128_d8_k2_seed0
+code/tor_n200_d10_k2_seed0
+code/tor_n288_d12_k2_seed0

@@ -1,0 +1,58 @@
+{
+  "record_type": "mi_scale_sweep",
+  "schema_version": 1,
+  "created_at_utc": "2026-05-18T13:32:34.883888Z",
+  "script": "decoding/run_mi_scale_sweep.py",
+  "config": {
+    "l_values": [
+      8
+    ],
+    "allow_unbalanced": false,
+    "device": "cuda:0",
+    "n_type": "made",
+    "seed": 0,
+    "error_seed": 51697,
+    "split_seed": 0,
+    "bootstrap_seed": 0,
+    "er": 0.05,
+    "e_model": "dep",
+    "partition_axis": "x",
+    "cut": null,
+    "n_train": 10000,
+    "n_val": 2000,
+    "n_test": 2000,
+    "mi_samples": 40000,
+    "bootstrap_samples": 200,
+    "chunk_size": 1000,
+    "epoch": 100,
+    "batch": 256,
+    "lr": 0.001,
+    "weight_decay": 0.0,
+    "lr_decay_factor": 0.5,
+    "lr_decay_patience": 5,
+    "min_lr": 0.0002,
+    "log_every": 10,
+    "early_stop_patience": 20,
+    "early_stop_min_delta": 0.0,
+    "dtype": "float32",
+    "depth": 0,
+    "width": 64,
+    "made_activation": "tanh",
+    "made_residual": false,
+    "made_max_params": 0,
+    "hidden_dim": 512,
+    "d_model": 256,
+    "n_heads": 4,
+    "d_ff": 256,
+    "n_layers": 1,
+    "skip_existing": true
+  },
+  "artifacts": {
+    "result_paths": [
+      "/home/jinboyu/GND/generative_decoder/net/mi_scaling/l8_retrain_probe/results/made_tor_n128_d8_k2_seed0_er0.05_dep_xmid.json"
+    ],
+    "summary_json": "/home/jinboyu/GND/generative_decoder/net/mi_scaling/l8_retrain_probe/mi_vs_L.json",
+    "summary_csv": "/home/jinboyu/GND/generative_decoder/net/mi_scaling/l8_retrain_probe/mi_vs_L.csv",
+    "summary_plot": "/home/jinboyu/GND/generative_decoder/net/mi_scaling/l8_retrain_probe/mi_vs_L.png"
+  }
+}

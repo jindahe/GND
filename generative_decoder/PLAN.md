@@ -397,3 +397,168 @@ $$I(\gamma_A;\gamma_B) \quad \text{或} \quad I(A;B)$$
 5. 先在 `L=4` toric code 上用 GPU 跑通 **计划 1**
 
 > 在 **计划 1** 完成之前，不建议直接跳到联合变量 $(\beta,\gamma)$ 的 MI。
+
+---
+
+## 十三、当前实现进度与剩余任务
+
+**更新日期：2026-05-14**
+
+### 13.1 已完成实现
+
+1. **P0 基础设施已落地**
+   * 已修复 `decoding/args.py` 的 help 文本与布尔参数解析问题。
+   * 已让 `mwpm.py` 与 `bposd.py` 支持单点 smoke test，不再只适合长 sweep。
+   * 已修复 `forward_decoding.py` 在单样本 timing 统计下输出 `nan` 的问题。
+
+2. **P1 空间切割基础已落地**
+   * 已在 `module/utils.py` 中加入 toric syndrome 空间坐标与 `AB/BA` 顺序工具。
+   * 当前可直接得到 `coords`、`idx_A`、`idx_B`、`order_AB`、`order_BA`。
+
+3. **P2 syndrome-only 数据路径已落地**
+   * 已新增 `decoding/syndrome_dataset.py`。
+   * 当前可从物理误差直接采样 syndrome，并保存 `train / val / test` 数据集。
+   * 当前支持 toric code 的 `AB` 与 `BA` 两种顺序重排。
+
+4. **P3 syndrome-only 训练入口已落地**
+   * 已新增 `decoding/train_mi_syndrome.py`。
+   * 当前支持 `MADE`、`NADE`、`TraDE_binary` 三种模型。
+   * 当前支持读取 P2 数据包、训练、验证、测试并保存 checkpoint。
+
+5. **TraDE 数值稳定性修复已完成**
+   * 已修复 `module/TraDE.py` 中 causal attention mask 的实现错误。
+   * 该修复后 `TraDE_binary` 的 syndrome-only 训练已能完成最小 CPU 验证。
+
+6. **P4 最小 MI 评估脚本已落地**
+   * 已新增 `decoding/mi_bipartite.py`。
+   * 当前可加载 `AB/BA` 两个 syndrome-only checkpoint，并估计
+     $H_q(A,B)$、$H_q(A)$、$H_q(B)$ 与 $I_q(A;B)$。
+   * 当前支持 Monte Carlo 采样估计与结果 JSON 保存。
+
+7. **P5 统一 token 级 log-prob 接口已落地**
+   * 已给 `MADE`、`NADE`、`TraDE_binary` 增加 `token_log_prob(...)`。
+   * 当前 `MADE` 与 `TraDE_binary` 也提供统一的 `sample(...)` 入口，便于评估脚本复用。
+
+8. **P6 Bootstrap 误差分析最小版本已落地**
+   * `decoding/mi_bipartite.py` 当前支持 bootstrap 重采样。
+   * 当前可输出 bootstrap 均值、标准差与 95% 置信区间。
+
+9. **P7 GPU 最小闭环已验证**
+   * 已通过 `codex exec --sandbox danger-full-access` 的 GPU 包装路径完成
+     `train_mi_syndrome.py` 的 `AB/BA` 最小 `cuda:0` 训练。
+   * 已在 GPU 上完成 `mi_bipartite.py` 的最小评估闭环。
+
+10. **P8 自动化尺度流水线已落地**
+   * 已新增 `decoding/run_mi_scale_sweep.py`。
+   * 当前可按多个 `L` 自动执行 code 生成、`AB/BA` 数据集生成、训练、MI 评估与最终聚合。
+   * 当前默认拒绝奇数 `L`，除非显式传入 `--allow-unbalanced`。
+
+11. **P6 稳定性分析入口已落地**
+   * 已新增 `decoding/mi_stability_analysis.py`。
+   * 当前可对同一组 `AB/BA` checkpoint 执行“多样本数 × 多评估种子”的重复评估。
+   * 当前可输出 raw CSV、grouped CSV、summary JSON 与收敛图。
+
+12. **P7 MADE 正式 GPU 基线已落地**
+   * 已在 `L=4`、toric code、`er=0.05` 上完成 `MADE` 的 `AB/BA` 正式 GPU 训练。
+   * 当前正式基线配置为：`depth=0`、`width=64`、`epoch=100`、`batch=512`、`lr=1e-3`、`dtype=float32`、`device=cuda:0`。
+   * 当前正式评估使用 `mi_samples=20000`、`bootstrap_samples=200`。
+   * 产物已写入 `net/mi_scaling/p7_made_d4/`。
+
+13. **P8 MADE even-L 正式尺度结果已落地**
+   * 已在 `L=4,6,8,10,12` 上完成 `MADE` 的正式 GPU 尺度扫描。
+   * 当前 `MI vs L` 汇总写入 `net/mi_scaling/p8_made_even/`。
+   * 当前结果为：`L=4 -> 0.823137`，`L=6 -> 1.076084`，`L=8 -> 2.772041`，`L=10 -> 0.986748`，`L=12 -> 1.280560`。
+
+14. **P8 MADE 大尺度异常已完成诊断与一轮修复验证**
+   * 已确认 `L=10,12` 的异常不主要来自 MI 公式，而是训练策略失效。
+   * 原正式配置使用 `StepLR(step_size=2000)`，但 `P8` 训练仅运行 `100` epoch，因此学习率在整轮训练中实际上从未下降。
+   * 现已将 `decoding/train_mi_syndrome.py` 改为验证集驱动的 `ReduceLROnPlateau`，并补充 `early stopping`、`effective_width`、`parameter_count` 与调度器配置记录。
+   * `MADE` 相关新参数已接入 `decoding/args.py`、`decoding/run_mi_scale_sweep.py` 与 `decoding/mi_bipartite.py`，保证训练、评估、批量 sweep 三条路径一致。
+   * 端到端复验结果：在新目录 `net/mi_scaling/p8_made_plateau_l10/` 下，`L=10` 的正式复跑结果从旧的 `MI=0.986748` 提升到 `MI=2.934803`；对应 `AB` 模型最佳验证 NLL 从 `62.221869` 改善到 `61.849250`。
+   * 额外针对性验证表明：单纯启用 `made_max_params` 缩宽并不能稳定改善结果，当前更应把 plateau 学习率调度视为默认修复方案。
+
+### 13.2 当前剩余任务
+
+| 状态 | 任务 | 关键动作 | 预期产出 |
+| :--- | :--- | :--- | :--- |
+| 已完成 | **P4：最小 MI 评估脚本** | `decoding/mi_bipartite.py` 已可加载 `AB/BA` 模型并估计 $H_q(A,B)$、$H_q(A)$、$H_q(B)$ | 第一版 $\hat I_q(\gamma_A;\gamma_B)$ 数值 |
+| 已完成 | **P5：统一 token 级 log-prob 接口** | `MADE / NADE / TraDE_binary` 已支持 `token_log_prob(x)` | 熵拆分与区域级 NLL 计算接口 |
+| 部分完成 | **P6：Bootstrap 误差分析** | 已支持 bootstrap 重采样，并新增 `decoding/mi_stability_analysis.py`；仍需补正式多样本数与多随机种子实验数据 | 初版误差条与稳定性表 |
+| 部分完成 | **P7：GPU 正式训练闭环** | 已完成 `MADE` 在 `L=4` 上的正式 GPU 基线训练与评估；后续仍需把同类配置推广到更多 `L` 或更多架构 | 一组可复现实验 checkpoint |
+| 部分完成 | **P8：尺度分析** | 已完成 `MADE` 在 `L=4,6,8,10,12` 上的首轮正式 GPU 尺度结果，并已定位大尺寸异常的训练策略根因；后续需用 plateau 调度重新生成正式 even-`L` 曲线 | 修正后的 `MI vs L` 曲线 |
+| 待完成 | **P9：架构比较** | 在 `MADE / NADE / TraDE_binary` 上重复尺度分析 | 架构对比结果 |
+| 待完成 | **P10：联合变量扩展** | 定义 $\beta$ 的空间归属并扩展到 $(\beta,\gamma)$ 联合 MI | $I(A;B)$ for joint variables |
+
+### 13.3 下一步推荐顺序
+
+1. 先用当前新默认训练策略重跑 `P8 MADE even-L` 正式结果
+   * 推荐固定配置：`width=64`、`lr=1e-3`、`lr_decay_factor=0.5`、`lr_decay_patience=5`、`min_lr=2e-4`、`early_stop_patience=20`、`dtype=float32`、`device=cuda:0`
+   * 优先补 `L=8,10,12`，并与旧目录 `net/mi_scaling/p8_made_even/` 做并排对比
+   * 新正式结果建议单独写入一个新目录，例如 `net/mi_scaling/p8_made_plateau_even/`
+2. 完整回填 `P6` 的正式稳定性数据
+   * 对修复后的 `MADE` checkpoint 再做样本数收敛检查与多评估种子重复
+   * 重点确认 `MI` 提升不是单次 Monte Carlo 波动
+3. 固化 `MADE` 正式推荐训练策略
+   * 以修复后的 `P8` 结果为依据，决定 `plateau + early stop` 是否作为仓库默认正式配置
+   * 明确 `made_max_params` 仅作为超大系统的可选保护阀，而不是默认收缩策略
+4. 再进入 `P9` 架构比较
+   * 在 `NADE / TraDE_binary` 上复用同一套记录规范与尺度流水线
+   * 对比的不只是 `MI vs L`，还应包括 `best_val_nll`、`epochs_trained`、推理成本
+5. 最后进入 `P10` 联合变量扩展
+
+### 13.4 本轮问题处理总结
+
+1. **现象**
+   * `P8` 首轮 `MADE` even-`L` 结果在 `L=10,12` 上出现明显非单调，`MI` 相比 `L=8` 异常偏低。
+
+2. **根因判断**
+   * `MI` 评估公式本身无误，计算的是模型分布 `q` 上的
+     $I_q(A;B)=H_q(A)+H_q(B)-H_q(A,B)$。
+   * 异常主要来自训练策略：原 `StepLR(step_size=2000)` 在 `100` epoch 训练中永远不触发，导致大尺寸模型在验证集上早早停滞后持续漂移。
+
+3. **代码修改**
+   * `decoding/train_mi_syndrome.py`：
+     将学习率调度改为 `ReduceLROnPlateau`，加入 `early stopping`，并把 `effective_width`、`parameter_count`、`epochs_trained` 与调度器参数写入 checkpoint/record。
+   * `decoding/args.py`：
+     增加 `made_activation`、`made_residual`、`made_max_params`、`weight_decay`、`lr_decay_factor`、`lr_decay_patience`、`min_lr`、`early_stop_patience` 等参数。
+   * `decoding/run_mi_scale_sweep.py`：
+     把新训练参数接入自动化尺度流水线。
+   * `decoding/mi_bipartite.py`：
+     评估时按 checkpoint 中的 `effective_width` / activation / residual 重建模型。
+
+4. **验证结果**
+   * `L=10` 旧正式结果：`MI=0.986748`。
+   * `L=10` 新正式复跑结果：`MI=2.934803`，输出目录为 `net/mi_scaling/p8_made_plateau_l10/`。
+   * `L=10 AB` 最佳验证 NLL：`62.221869 -> 61.849250`。
+   * 附加试验显示，单纯缩小 `width` 或改用 `relu` 并不能稳定解决问题，因此不应把“缩模型”作为默认修法。
+
+### 13.5 Sandbox GPU 尝试清单
+
+如果目标是让 **当前 sandbox 环境** 也能使用 GPU，建议单独按下面顺序排查：
+
+1. **确认设备节点是否暴露**
+   * 检查 sandbox 内是否能看到 `/dev/nvidia0`、`/dev/nvidiactl`、`/dev/nvidia-uvm`、`/dev/nvidia-uvm-tools`、`/dev/nvidia-modeset`。
+
+2. **确认 NVIDIA 用户态库是否暴露**
+   * 检查 sandbox 内是否能解析 `libcuda.so.1`、`libnvidia-ml.so.1` 等必要动态库。
+
+3. **确认 PyTorch 与驱动版本匹配**
+   * 当前推荐环境仍是 `ai-env-cu128`，避免回到 `cu130` 版本导致 `torch.cuda.is_available()` 为 `False`。
+
+4. **确认 sandbox 启动器是否允许透传 GPU**
+   * 当前现象表明 session 在受限 sandbox 中启动，默认没有把 `/dev/nvidia*` 暴露进去。
+   * 若运行器层不改，仅修改仓库代码无法让 GPU 在 sandbox 内可用。
+
+5. **做最小 GPU 探针**
+   * 先只跑 `torch.cuda.is_available()`、`torch.cuda.device_count()` 和一个最小 CUDA tensor 运算。
+   * 在这些探针通过之前，不建议直接启动 P3 正式训练。
+
+### 13.6 Sandbox GPU 成功标准
+
+以下条件都满足，才认为 sandbox GPU 可用于 MI 训练：
+
+1. `torch.cuda.is_available()` 返回 `True`
+2. `torch.cuda.device_count()` 至少为 `1`
+3. 最小 CUDA tensor 运算成功
+4. `decoding/train_mi_syndrome.py` 能以 `-device cuda:0` 完成至少 1 epoch
+5. 保存出的 checkpoint 与 CPU 路径结构一致

@@ -12,4 +12,16 @@ from .MADE import MADE
 from .mod2 import mod2
 from .NADE import NADE
 from .TraDE import TraDE, TraDE_binary
-from .utils import Errormodel, Hx_Hz, PCM, error_solver, generate_graph, read_code
+from .utils import (
+    Errormodel,
+    Hx_Hz,
+    PCM,
+    error_solver,
+    generate_graph,
+    reorder_bits,
+    read_code,
+    sample_syndromes,
+    split_samples,
+    toric_bipartition,
+    toric_syndrome_coords,
+)

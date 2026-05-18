@@ -37,9 +37,12 @@ class NADE(nn.Module):
 
     def forward(self, x):
         logits = self._forward(x)
-        log_prob = -F.binary_cross_entropy_with_logits(logits, x, reduction="none")
-    
-        return log_prob.sum(-1)
+        return self.token_log_prob(x, logits=logits).sum(-1)
+
+    def token_log_prob(self, x, logits=None):
+        if logits is None:
+            logits = self._forward(x)
+        return -F.binary_cross_entropy_with_logits(logits, x, reduction="none")
 
     @torch.no_grad()
     def sample(self, batch_size):

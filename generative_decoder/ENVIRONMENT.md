@@ -116,6 +116,26 @@ MWPM baseline:
 env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python mwpm.py -c_type sur -n 13 -d 3 -k 1 -seed 0 -e_model dep -trials 8
 ```
 
+### Syndrome MI Smoke Test
+
+CPU smoke test:
+
+```bash
+python decoding/syndrome_dataset.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_train 64 -n_val 16 -n_test 16 -partition_axis x -partition_order AB -dataset_dir /tmp/gnd_mi_smoke
+python decoding/syndrome_dataset.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_train 64 -n_val 16 -n_test 16 -partition_axis x -partition_order BA -dataset_dir /tmp/gnd_mi_smoke
+python decoding/train_mi_syndrome.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -depth 0 -width 4 -device cpu -dtype float32 -epoch 2 -batch 16 -partition_axis x -partition_order AB -dataset_dir /tmp/gnd_mi_smoke -save True -save_dir /tmp/gnd_mi_models
+python decoding/train_mi_syndrome.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -depth 0 -width 4 -device cpu -dtype float32 -epoch 2 -batch 16 -partition_axis x -partition_order BA -dataset_dir /tmp/gnd_mi_smoke -save True -save_dir /tmp/gnd_mi_models
+python decoding/mi_bipartite.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -device cpu -partition_axis x -save_dir /tmp/gnd_mi_models -mi_samples 128 -chunk_size 32 -bootstrap_samples 10 -bootstrap_seed 7
+```
+
+GPU smoke test through Codex:
+
+```bash
+./scripts/run_codex_gpu.sh "env MPLCONFIGDIR=/tmp/mpl-gnd-gpu python3 decoding/train_mi_syndrome.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -depth 0 -width 4 -device cuda:0 -dtype float32 -epoch 1 -batch 16 -partition_axis x -partition_order AB -dataset_dir /tmp/gnd_mi_smoke -save True -save_dir /tmp/gnd_mi_models_gpu"
+./scripts/run_codex_gpu.sh "env MPLCONFIGDIR=/tmp/mpl-gnd-gpu python3 decoding/train_mi_syndrome.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -depth 0 -width 4 -device cuda:0 -dtype float32 -epoch 1 -batch 16 -partition_axis x -partition_order BA -dataset_dir /tmp/gnd_mi_smoke -save True -save_dir /tmp/gnd_mi_models_gpu"
+./scripts/run_codex_gpu.sh "env MPLCONFIGDIR=/tmp/mpl-gnd-gpu python3 decoding/mi_bipartite.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -device cuda:0 -partition_axis x -save_dir /tmp/gnd_mi_models_gpu -mi_samples 128 -chunk_size 32 -bootstrap_samples 10 -bootstrap_seed 7"
+```
+
 ## Installing the Validated GPU Environment
 
 If `ai-env-cu128` does not exist on a new machine, create it by cloning
@@ -193,6 +213,27 @@ and the relevant NVIDIA user-space libraries such as:
 
 - `libcuda.so.1`
 - `libnvidia-ml.so.1`
+
+### Temporary GPU Workaround
+
+For this repository, the simplest way to run a GPU-dependent Codex subprocess
+is to use the local wrapper:
+
+```bash
+./scripts/run_codex_gpu.sh "python3 -c 'import torch; print(torch.cuda.is_available())'"
+```
+
+This expands to:
+
+```bash
+codex exec --sandbox danger-full-access "python3 -c 'import torch; print(torch.cuda.is_available())'"
+```
+
+You can also pass a regular shell command without wrapping it yourself:
+
+```bash
+./scripts/run_codex_gpu.sh /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python decoding/training.py -save True -n_type made -c_type sur -n 13 -d 3 -k 1 -seed 0 -er 0.189 -device cuda:0 -batch 8 -epoch 1 -trials 8 -depth 1 -width 4
+```
 
 ## Notes on Project Files
 

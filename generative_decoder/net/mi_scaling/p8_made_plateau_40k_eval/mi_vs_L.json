@@ -1,0 +1,53 @@
+{
+  "record_type": "mi_scale_summary",
+  "schema_version": 1,
+  "created_at_utc": "2026-05-18T13:33:57.129875Z",
+  "points": [
+    {
+      "path": "/home/jinboyu/GND/generative_decoder/net/mi_scaling/p8_made_plateau_40k_eval/results/made_tor_n200_d10_k2_seed0_er0.05_dep_xmid.json",
+      "L": 10,
+      "n": 200,
+      "k": 2,
+      "seed": 0,
+      "er": 0.05,
+      "e_model": "dep",
+      "n_type": "made",
+      "axis": "x",
+      "cut": 5,
+      "len_A": 99,
+      "len_B": 99,
+      "balanced_cut": true,
+      "H_AB": 58.261444091796875,
+      "H_A": 30.616802215576172,
+      "H_B": 31.039880752563477,
+      "MI": 3.3952388763427734,
+      "bootstrap_std": 0.059514611894865094,
+      "bootstrap_ci95_low": 3.287977600097656,
+      "bootstrap_ci95_high": 3.514272594451904
+    },
+    {
+      "path": "/home/jinboyu/GND/generative_decoder/net/mi_scaling/p8_made_plateau_40k_eval/results/made_tor_n288_d12_k2_seed0_er0.05_dep_xmid.json",
+      "L": 12,
+      "n": 288,
+      "k": 2,
+      "seed": 0,
+      "er": 0.05,
+      "e_model": "dep",
+      "n_type": "made",
+      "axis": "x",
+      "cut": 6,
+      "len_A": 143,
+      "len_B": 143,
+      "balanced_cut": true,
+      "H_AB": 84.77328491210938,
+      "H_A": 44.705570220947266,
+      "H_B": 44.75878143310547,
+      "MI": 4.691066741943359,
+      "bootstrap_std": 0.06945744403574901,
+      "bootstrap_ci95_low": 4.558402442932129,
+      "bootstrap_ci95_high": 4.817976570129394
+    }
+  ],
+  "all_balanced": true,
+  "even_L_only": true
+}
