@@ -12,7 +12,15 @@ net/mi_scaling/**/models/
 net/mi_scaling/**/results/
 
 # Generated stability raw per-seed outputs: keep grouped summaries, ignore raw internals
+net/mi_stability/mi_stability.png
+net/mi_stability/mi_stability_grouped.csv
+net/mi_stability/mi_stability_raw.csv
+net/mi_stability/mi_stability_summary.json
+net/mi_stability/**/mi_stability_raw.csv
 net/mi_stability/**/results/
+
+# One-off diagnostic directory already summarized elsewhere
+net/mi_scaling/p8_made_plateau_l10/
 
 # Generated toric code instances from recent MI sweeps
 code/tor_n72_d6_k2_seed0
