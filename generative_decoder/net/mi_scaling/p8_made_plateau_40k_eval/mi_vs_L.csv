@@ -1,3 +1,0 @@
-L,n,k,seed,er,e_model,n_type,axis,cut,len_A,len_B,balanced_cut,H_AB,H_A,H_B,MI,bootstrap_std,bootstrap_ci95_low,bootstrap_ci95_high,path
-10,200,2,0,0.05,dep,made,x,5,99,99,True,58.261444091796875,30.616802215576172,31.039880752563477,3.3952388763427734,0.059514611894865094,3.287977600097656,3.514272594451904,/home/jinboyu/GND/generative_decoder/net/mi_scaling/p8_made_plateau_40k_eval/results/made_tor_n200_d10_k2_seed0_er0.05_dep_xmid.json
-12,288,2,0,0.05,dep,made,x,6,143,143,True,84.77328491210938,44.705570220947266,44.75878143310547,4.691066741943359,0.06945744403574901,4.558402442932129,4.817976570129394,/home/jinboyu/GND/generative_decoder/net/mi_scaling/p8_made_plateau_40k_eval/results/made_tor_n288_d12_k2_seed0_er0.05_dep_xmid.json

@@ -1,37 +1,95 @@
 # Toric Code Syndrome-Only 互信息的简单模型推导
 
+本文给出 `toric code syndrome-only MI` 的一条工程友好的推导路径：先说明目标互信息是什么，再解释为什么需要 `AB/BA` 两种自回归排序，最后用一个可手算的局域 toy model 检查公式，并说明它如何外推为完整 Toric Code 的边界律。
 
-## 1. 问题背景
-
-考虑边长为 `L` 的 toric code。经过物理噪声后，系统产生一个 syndrome 构型。若只保留 syndrome，而不显式跟踪底层物理误差，那么一个样本就可以记为
-$$
-s=(s_1,s_2,\dots,s_m)\in\{0,1\}^m,
-$$
-其中 `m` 为 syndrome bit 的总数。
-
-在 toric code 中，这些 syndrome bits 可以按其空间位置分成两个区域。为了讨论 bipartite mutual information，我们取一个空间切割，将 syndrome 写成
-$$
-s=(a,b),
-$$
-其中
-
-- `a` 表示区域 `A` 上的 syndrome bits
-- `b` 表示区域 `B` 上的 syndrome bits
-
-这里 `A` 与 `B` 是对整个 syndrome 自由度的一次二分，通常可理解为沿某个方向做左右切分或上下切分。
+本文默认使用自然对数 `log = ln`，所以熵和互信息的单位均为 **nats**。若要换成 bits，需要整体除以 `log 2`。
 
 ---
 
-## 2. 目标量：syndrome-only 的互信息
+## 0. 批判者审阅摘要
 
-设 `q(a,b)` 是某个模型在 syndrome 空间上定义的联合分布。我们关心的量是模型分布下的互信息
+原始推导的主体方向是正确的，但有几处容易导致误解：
+
+1. **真实分布与模型分布需要隔离。**
+   物理噪声诱导的真实 syndrome 分布记为 `P`，自回归模型学到的分布记为 `q`。训练代码实际估计的是模型分布下的互信息，或者更严格地说，是由 `q_AB` 与 `q_BA` 两个排序模型拼接出来的互信息代理量。
+
+2. **`AB/BA` 两模型拼接不是自动严格等于同一个 `I_q(A;B)`。**
+   只有当 `q_AB` 和 `q_BA` 都表示同一个底层联合分布 `q(a,b)` 时，
+   $$
+   H_A + H_B - H_{AB}
+   $$
+   才严格等于该 `q` 下的互信息。若二者训练误差不同，这个量应记为 `I_comp`，是一个可计算代理量。
+
+3. **`AB` 后缀不能当作 `H(B)`。**
+   在 `AB` 排序中，后半段 token 的 NLL 是
+   $$
+   -\log q_{AB}(b\mid a),
+   $$
+   其期望是条件熵 `H(B|A)`，不是边缘熵 `H(B)`。
+
+4. **局域 toy model 的几何描述需要更精确。**
+   “两个相邻 plaquette 的四边 parity 模型”这个名字容易误导。公式实际描述的是：每个 syndrome check 由 4 条边的 parity 给出，其中左右两个 checks 共享 1 条边，并且各自还有 3 条私有边。因此总共涉及 7 个边变量，而不是总共 4 条边。
+
+5. **边界律不是有限 `L` 精确闭式。**
+   $$
+   I_L(A;B)=\alpha(p)|\partial A|+\beta(p)+o(1)
+   $$
+   是有限相关长度区域的大尺寸标度律，不是从 toy model 直接推出的全局闭式。
+
+6. **`beta(p)` 依赖 syndrome 坐标表示。**
+   若保留 full checks，全局 parity constraints 可能贡献 1 bit 或 2 bits 的常数相关；若使用 independent syndrome generators，这类冗余约束通常已被 gauge fixed 掉。
+
+下面的修订版按这些问题重新组织推导。
+
+---
+
+## 1. 问题设置
+
+考虑边长为 `L` 的 toric code。经过物理噪声后，系统产生一个 syndrome 构型。只保留 syndrome、不显式记录底层物理错误时，一个样本记为
+$$
+s=(s_1,s_2,\dots,s_m)\in\{0,1\}^m.
+$$
+
+这里 `m` 是所采用 syndrome 坐标中的 bit 数。需要注意：
+
+- 若使用 **full check** 坐标，torus 上 plaquette 和 star checks 各有一条全局 parity 约束。
+- 若使用 **independent syndrome generators**，则删掉冗余 checks，只保留线性独立坐标。当前仓库采用的是这种表示。
+
+对空间做一次二分，将 syndrome 写为
+$$
+s=(a,b),
+$$
+其中：
+
+- `a` 是区域 `A` 上的 syndrome bits；
+- `b` 是区域 `B` 上的 syndrome bits。
+
+后文中的 `A/B` 是 syndrome 坐标的空间二分，不是物理 qubit 集合的二分。
+
+---
+
+## 2. 目标量：真实分布与模型分布
+
+物理噪声诱导一个真实 syndrome 分布，记为
+$$
+P(a,b).
+$$
+
+若直接讨论真实分布的互信息，则定义为
+$$
+I_P(A;B)
+=
+\sum_{a,b}P(a,b)\log\frac{P(a,b)}{P_A(a)P_B(b)}.
+$$
+
+实际工程中，我们通常不穷举 `P(a,b)`，而是训练自回归模型。模型分布记为 `q`，对应互信息为
 $$
 I_q(A;B)
 =
-\sum_{a,b} q(a,b)\log\frac{q(a,b)}{q(a)q(b)}.
+\sum_{a,b}q(a,b)\log\frac{q(a,b)}{q_A(a)q_B(b)}.
 $$
 
-它也可以写成熵的组合：
+等价地，
 $$
 I_q(A;B)=H_q(A)+H_q(B)-H_q(A,B),
 $$
@@ -40,67 +98,75 @@ $$
 H_q(A,B)=-\sum_{a,b}q(a,b)\log q(a,b),
 $$
 $$
-H_q(A)=-\sum_a q(a)\log q(a),
+H_q(A)=-\sum_a q_A(a)\log q_A(a),
 $$
 $$
-H_q(B)=-\sum_b q(b)\log q(b).
+H_q(B)=-\sum_b q_B(b)\log q_B(b).
 $$
 
-因此，核心问题是如何有效得到这三个熵项。
+本文后续推导的核心是：如何利用自回归模型的前缀概率结构，高效估计这些熵项。
 
 ---
 
-## 3. 自回归模型的引入
+## 3. 自回归分解
 
-在 `syndrome-only` 设定中，我们并不直接穷举全部 syndrome 构型，而是用一个自回归概率模型来拟合 syndrome 分布。
-
-先将全部 syndrome bits 排列成一个序列
+将 syndrome bits 按某个顺序排列成序列
 $$
 x=(x_1,x_2,\dots,x_m).
 $$
 
-一个自回归模型将联合分布写为
+一个自回归模型定义
 $$
 q(x)=\prod_{t=1}^m q(x_t\mid x_{<t}),
 $$
-其中 `x_{<t}` 表示第 `t` 位之前的全部变量。
+其中 `x_{<t}` 表示第 `t` 位之前的全部 token。
 
-取对数得到
+取对数：
 $$
 \log q(x)=\sum_{t=1}^m \log q(x_t\mid x_{<t}),
 $$
-于是
+因此
 $$
 -\log q(x)=\sum_{t=1}^m -\log q(x_t\mid x_{<t}).
 $$
 
-这说明：一个样本的联合负对数概率，可以精确分解成逐位条件负对数概率之和。
+这一步是精确的链式分解。数值误差只来自模型近似和 Monte Carlo 采样。
 
 ---
 
-## 4. 针对 bipartition 的两种排序
+## 4. 为什么需要 `AB` 和 `BA` 两种排序
 
-为了从自回归模型中提取区域 `A` 和 `B` 的边缘熵，我们需要利用“前缀概率”这一结构。
-
-为此，对同一个二分 `A/B`，考虑两种变量排序：
+对同一个空间二分 `A/B`，定义两种 token 顺序。
 
 ### 4.1 `AB` 排序
 
-把区域 `A` 的全部变量放在前面，区域 `B` 的全部变量放在后面：
+把区域 `A` 的全部 syndrome bits 放在前面，区域 `B` 放在后面：
 $$
 x^{AB}=(a_1,\dots,a_{|A|},b_1,\dots,b_{|B|}).
 $$
 
-对应的自回归模型记为
+对应模型记为
 $$
 q_{AB}(a,b)
 =
-\prod_{t=1}^{m} q_{AB}(x_t\mid x_{<t}).
+\prod_{t=1}^{m}q_{AB}(x_t\mid x_{<t}).
 $$
+
+在该排序下，前缀概率正好是 `A` 的边缘概率：
+$$
+q_{AB}(a)
+=
+\prod_{t=1}^{|A|}q_{AB}(x_t\mid x_{<t}).
+$$
+
+所以 `AB` 排序可以直接给出：
+
+- `H(A)`：来自前 `|A|` 个 token 的 NLL；
+- `H(A,B)`：来自全序列 NLL。
 
 ### 4.2 `BA` 排序
 
-反过来，把区域 `B` 放在前面，区域 `A` 放在后面：
+反过来，将区域 `B` 放在前面：
 $$
 x^{BA}=(b_1,\dots,b_{|B|},a_1,\dots,a_{|A|}).
 $$
@@ -109,270 +175,236 @@ $$
 $$
 q_{BA}(b,a)
 =
-\prod_{t=1}^{m} q_{BA}(x_t\mid x_{<t}).
+\prod_{t=1}^{m}q_{BA}(x_t\mid x_{<t}).
 $$
 
-这两种排序的目的不是改变物理问题，而是让 `A` 或 `B` 分别成为自回归前缀，从而使边缘概率可以直接读取。
-
----
-
-## 5. 联合熵的推导
-
-对 `AB` 模型而言，联合熵定义为
-$$
-H_{q_{AB}}(A,B)
-=
--\sum_{a,b} q_{AB}(a,b)\log q_{AB}(a,b).
-$$
-
-写成期望形式：
-$$
-H_{q_{AB}}(A,B)
-=
-\mathbb{E}_{(a,b)\sim q_{AB}}
-\bigl[-\log q_{AB}(a,b)\bigr].
-$$
-
-再利用自回归分解：
-$$
--\log q_{AB}(a,b)
-=
-\sum_{t=1}^{m} -\log q_{AB}(x_t\mid x_{<t}),
-$$
-因此
-$$
-H_{q_{AB}}(A,B)
-=
-\mathbb{E}_{(a,b)\sim q_{AB}}
-\left[
-\sum_{t=1}^{m} -\log q_{AB}(x_t\mid x_{<t})
-\right].
-$$
-
-这表明联合熵就是逐位条件 NLL 总和的平均值。
-
----
-
-## 6. 区域 `A` 的边缘熵
-
-现在考虑 `AB` 排序。在这种排序下，前 `|A|` 个变量恰好就是区域 `A` 的全部变量，因此
-$$
-q_{AB}(a)
-=
-\prod_{t=1}^{|A|} q_{AB}(x_t\mid x_{<t}).
-$$
-
-两边取负对数，得到
-$$
--\log q_{AB}(a)
-=
-\sum_{t=1}^{|A|} -\log q_{AB}(x_t\mid x_{<t}).
-$$
-
-再对 `q_{AB}` 取期望：
-$$
-H_{q_{AB}}(A)
-=
-\mathbb{E}_{(a,b)\sim q_{AB}}
-\bigl[-\log q_{AB}(a)\bigr]
-$$
-$$
-=
-\mathbb{E}_{(a,b)\sim q_{AB}}
-\left[
-\sum_{t=1}^{|A|} -\log q_{AB}(x_t\mid x_{<t})
-\right].
-$$
-
-因此，在 `AB` 排序中，`A` 的边缘熵就是“前 `|A|` 个 token 的负对数概率之和”的平均值。
-
----
-
-## 7. 区域 `B` 的边缘熵
-
-若仍停留在 `AB` 排序中，则序列尾部对应的是条件概率
-$$
-q_{AB}(b\mid a),
-$$
-因为
-$$
-q_{AB}(a,b)=q_{AB}(a)\,q_{AB}(b\mid a).
-$$
-
-于是尾部 token 的负对数和给出的其实是
-$$
--\log q_{AB}(b\mid a),
-$$
-它对应的期望是条件熵
-$$
-H_{q_{AB}}(B\mid A),
-$$
-而不是我们想要的边缘熵 `H_q(B)`。
-
-因此，需要再引入 `BA` 排序。在 `BA` 排序中，区域 `B` 被放到了前缀位置，因此
+在该排序下，
 $$
 q_{BA}(b)
 =
-\prod_{t=1}^{|B|} q_{BA}(x_t\mid x_{<t}),
+\prod_{t=1}^{|B|}q_{BA}(x_t\mid x_{<t}),
 $$
-从而
+所以 `BA` 排序可以直接给出 `H(B)`。
+
+### 4.3 关键警告：`AB` 后缀不是 `H(B)`
+
+在 `AB` 排序中，后缀 token 给出的是
+$$
+q_{AB}(b\mid a),
+$$
+因此
+$$
+\sum_{t=|A|+1}^{m}-\log q_{AB}(x_t\mid x_{<t})
+=
+-\log q_{AB}(b\mid a).
+$$
+
+其期望是
+$$
+H_{q_{AB}}(B\mid A),
+$$
+不是边缘熵 `H(B)`。
+
+因此，不能用 `AB` 后缀替代 `BA` 前缀。
+
+---
+
+## 5. 三个熵项的估计
+
+### 5.1 联合熵
+
+对 `AB` 模型，
+$$
+H_{q_{AB}}(A,B)
+=
+\mathbb E_{(a,b)\sim q_{AB}}
+\left[-\log q_{AB}(a,b)\right].
+$$
+
+利用自回归分解，
+$$
+H_{q_{AB}}(A,B)
+=
+\mathbb E_{(a,b)\sim q_{AB}}
+\left[
+\sum_{t=1}^{m}
+-\log q_{AB}(x_t\mid x_{<t})
+\right].
+$$
+
+### 5.2 区域 `A` 的边缘熵
+
+因为 `A` 是 `AB` 排序的前缀，
+$$
+-\log q_{AB}(a)
+=
+\sum_{t=1}^{|A|}
+-\log q_{AB}(x_t\mid x_{<t}).
+$$
+
+所以
+$$
+H_{q_{AB}}(A)
+=
+\mathbb E_{(a,b)\sim q_{AB}}
+\left[
+\sum_{t=1}^{|A|}
+-\log q_{AB}(x_t\mid x_{<t})
+\right].
+$$
+
+### 5.3 区域 `B` 的边缘熵
+
+因为 `B` 是 `BA` 排序的前缀，
 $$
 -\log q_{BA}(b)
 =
-\sum_{t=1}^{|B|} -\log q_{BA}(x_t\mid x_{<t}).
+\sum_{t=1}^{|B|}
+-\log q_{BA}(x_t\mid x_{<t}).
 $$
 
-再取期望即可得到
+所以
 $$
 H_{q_{BA}}(B)
 =
-\mathbb{E}_{(b,a)\sim q_{BA}}
-\bigl[-\log q_{BA}(b)\bigr]
-$$
-$$
-=
-\mathbb{E}_{(b,a)\sim q_{BA}}
+\mathbb E_{(b,a)\sim q_{BA}}
 \left[
-\sum_{t=1}^{|B|} -\log q_{BA}(x_t\mid x_{<t})
+\sum_{t=1}^{|B|}
+-\log q_{BA}(x_t\mid x_{<t})
 \right].
 $$
 
 ---
 
-## 8. 互信息的组合公式
+## 6. 组合互信息：严格等式与代理量
 
-现在三个量都已经可以由模型的逐位条件概率得到：
-
-1. 联合熵
+实际代码计算的是
 $$
-H_{AB}
-:=
-\mathbb{E}_{(a,b)\sim q_{AB}}
-\bigl[-\log q_{AB}(a,b)\bigr]
+H_{AB}:=H_{q_{AB}}(A,B),
 $$
-
-2. 区域 `A` 的边缘熵
 $$
-H_A
-:=
-\mathbb{E}_{(a,b)\sim q_{AB}}
-\bigl[-\log q_{AB}(a)\bigr]
+H_A:=H_{q_{AB}}(A),
 $$
-
-3. 区域 `B` 的边缘熵
 $$
-H_B
-:=
-\mathbb{E}_{(b,a)\sim q_{BA}}
-\bigl[-\log q_{BA}(b)\bigr]
+H_B:=H_{q_{BA}}(B),
+$$
+并组合
+$$
+I_{\mathrm{comp}}(A;B)
+=
+H_A+H_B-H_{AB}.
 $$
 
-于是定义组合量
+如果存在同一个联合分布 `q(a,b)`，使得 `q_AB` 和 `q_BA` 只是该分布的两种自回归排序表示，那么
 $$
-I_{\mathrm{comp}}(A;B)=H_A+H_B-H_{AB}.
+H_A=H_q(A),
+\qquad
+H_B=H_q(B),
+\qquad
+H_{AB}=H_q(A,B),
+$$
+于是
+$$
+I_{\mathrm{comp}}(A;B)=I_q(A;B).
 $$
 
-如果 `q_{AB}` 与 `q_{BA}` 都较好地逼近同一个潜在 syndrome 分布 `q(a,b)`，则有近似关系
+但在实际训练中，`q_AB` 与 `q_BA` 是两个分别训练的模型。若二者拟合同一个真实 syndrome 分布的误差不同，则
 $$
-I_{\mathrm{comp}}(A;B)\approx I_q(A;B).
+I_{\mathrm{comp}}(A;B)
 $$
-
-从理论上说，最理想的情况是存在同一个统一的 `q(a,b)`，使得
-$$
-H_A=H_q(A),\qquad H_B=H_q(B),\qquad H_{AB}=H_q(A,B),
-$$
-这时就严格得到
-$$
-I_q(A;B)=H_q(A)+H_q(B)-H_q(A,B).
-$$
+应被理解为一个 **两模型拼接的互信息代理量**。它在两个模型都训练充分且一致时才近似真实模型互信息或物理互信息。
 
 ---
 
-## 9. Monte Carlo 估计
+## 7. Monte Carlo 估计器
 
-上面的公式已经把互信息写成了概率论上的精确表达式，但具体数值仍需要对模型分布下的期望进行估计。
+从 `AB` 模型采样：
+$$
+(a^{(i)},b^{(i)})\sim q_{AB},
+\qquad i=1,\dots,N,
+$$
+从 `BA` 模型采样：
+$$
+(b^{(i)},a^{(i)})\sim q_{BA},
+\qquad i=1,\dots,N.
+$$
 
-设从 `AB` 模型独立采样
+构造：
 $$
-(a^{(1)},b^{(1)}),\dots,(a^{(N)},b^{(N)})\sim q_{AB},
-$$
-从 `BA` 模型独立采样
-$$
-(b^{(1)},a^{(1)}),\dots,(b^{(N)},a^{(N)})\sim q_{BA}.
-$$
-
-则可以构造以下估计量：
-$$
-\widehat{H}_{AB}
+\widehat H_{AB}
 =
-\frac{1}{N}\sum_{i=1}^{N} \bigl[-\log q_{AB}(a^{(i)},b^{(i)})\bigr],
+\frac1N\sum_{i=1}^N
+\left[-\log q_{AB}(a^{(i)},b^{(i)})\right],
 $$
 $$
-\widehat{H}_{A}
+\widehat H_A
 =
-\frac{1}{N}\sum_{i=1}^{N} \bigl[-\log q_{AB}(a^{(i)})\bigr],
+\frac1N\sum_{i=1}^N
+\left[-\log q_{AB}(a^{(i)})\right],
 $$
 $$
-\widehat{H}_{B}
+\widehat H_B
 =
-\frac{1}{N}\sum_{i=1}^{N} \bigl[-\log q_{BA}(b^{(i)})\bigr].
+\frac1N\sum_{i=1}^N
+\left[-\log q_{BA}(b^{(i)})\right].
 $$
 
-最终的互信息估计为
+最终估计：
 $$
-\widehat{I}
+\widehat I_{\mathrm{comp}}
 =
-\widehat{H}_A+\widehat{H}_B-\widehat{H}_{AB}.
+\widehat H_A+\widehat H_B-\widehat H_{AB}.
 $$
 
-这就是 `syndrome-only` 路径中最自然的模型计算方式：先用自回归模型定义概率分布，再对熵项做采样平均。
+Monte Carlo 误差可用 bootstrap 估计；训练误差需要通过多个 `train_seed` 评估。
 
 ---
 
-## 10. 该方法的物理含义
+## 8. 物理含义
 
-在 toric code 的 `syndrome-only` 任务中，这个量衡量的是：
+在 syndrome-only 任务中，互信息衡量的是：
 
-- 在模型分布下，区域 `A` 的 syndrome 与区域 `B` 的 syndrome 之间共享了多少信息
-- 或者说，知道 `A` 的 syndrome 之后，对 `B` 的不确定性减少了多少
+- 模型认为区域 `A` 的 syndrome 与区域 `B` 的 syndrome 之间共享多少信息；
+- 或者知道 `A` 之后，对 `B` 的不确定性减少多少。
 
-若互信息较大，说明模型认为跨越 cut 的 syndrome 相关性较强；若互信息较小，则说明模型认为两边更接近独立。
+若 `I(A;B)` 大，说明模型捕捉到较强的跨 cut syndrome 相关；若较小，则说明模型认为两边接近独立。
 
-因此，`I_q(A;B)` 可以视为一个描述 syndrome 空间长程相关性或空间耦合强度的统计量。
+需要强调：该量是 syndrome 分布上的互信息，而不是底层物理 error chain 的互信息。
 
 ---
 
-## 11. 一个可手算的 depolarizing toy model
+## 9. 可手算的 depolarizing toy model
 
-上面的自回归公式给出的是通用计算方式。为了理解 toric code 中 `I(A;B)` 的来源，可以看一个最小的局域模型：取 cut 两侧相邻的两个 plaquette check，它们共享一条物理边。
+为了给自回归互信息估计提供解析 benchmark，考虑 cut 两侧相邻的两个 plaquette checks。
 
-在 depolarizing 噪声下，每条物理边的 Pauli 错误可写成
+depolarizing 噪声下，每条物理边的 Pauli 错误为
 $$
 (x_e,z_e)\in\mathbb F_2^2,
 $$
-其中
+且
 $$
-\mathbb P(0,0)=1-p,\qquad
+\mathbb P(0,0)=1-p,
+\qquad
 \mathbb P(1,0)=\mathbb P(0,1)=\mathbb P(1,1)=\frac p3.
 $$
 
-对 plaquette syndrome 而言，只需要 $x_e$ 分量。因此单条边上
+plaquette syndrome 只看 `x_e` 分量，所以
 $$
 r:=\mathbb P(x_e=1)=\frac{2p}{3},
-$$
-并且
-$$
+\qquad
 c:=1-2r=1-\frac{4p}{3}.
 $$
 
-### 11.1 最简共享边模型
+### 9.1 最简共享边模型
 
-如果忽略其它边，只保留穿过 cut 的共享边，则左右两个 syndrome bit 都等于同一个随机变量：
+若只保留一条共享边，忽略其它边，则
 $$
-S_A=x_e,\qquad S_B=x_e.
+S_A=x_e,
+\qquad
+S_B=x_e.
 $$
 
-因此二者完全相同，互信息就是单个 Bernoulli 变量的熵：
+于是二者完全相同：
 $$
 I(S_A;S_B)=H_2(r),
 $$
@@ -381,47 +413,61 @@ $$
 H_2(r)=-r\log r-(1-r)\log(1-r).
 $$
 
-代入 depolarizing 噪声得到
+代入 depolarizing 噪声：
 $$
 I(S_A;S_B)
 =
 H_2\!\left(\frac{2p}{3}\right).
 $$
 
-这个模型过于理想化，因为真实 toric code 中每个 plaquette syndrome 是四条边错误的奇偶和，而不是只由 cut 上一条边决定。
+这是一个上界式直觉模型，因为真实 plaquette syndrome 是周围多条边的 parity，而不是单条边。
 
-### 11.2 两个相邻 plaquette 的四边 parity 模型
+### 9.2 相邻 plaquette 的局域 parity 模型
 
-更合理的局域模型是：左右两个相邻 plaquette 共享一条边，同时各自还有三条不共享的边。记共享边错误为 $x_0$，左右私有边 parity 分别为 $U,V$，则
+更接近真实几何的局域模型是：左右两个相邻 plaquette checks 共享一条边，同时每个 check 还各自有三条私有边。
+
+注意：该模型总共涉及 7 个边变量。所谓“每个 plaquette 的四边 parity”指的是每个 check 由 4 条边参与 parity，而不是整个模型只有 4 条边。
+
+记共享边错误为 `x_0`，左右私有边 parity 分别为 `U,V`：
 $$
-S_A=x_0\oplus U,\qquad
+S_A=x_0\oplus U,
+\qquad
 S_B=x_0\oplus V.
 $$
 
-其中 $x_0$ 是 Bernoulli$(r)$，而 $U,V$ 分别是三个独立 Bernoulli$(r)$ 变量的奇偶和。
+其中：
 
-使用二元变量的 bias 表示，
+- `x_0` 是 Bernoulli$(r)$；
+- `U` 是三条独立 Bernoulli$(r)$ 变量的 parity；
+- `V` 是另外三条独立 Bernoulli$(r)$ 变量的 parity。
+
+使用 bias 表示：
 $$
 \mathbb E[(-1)^{x_e}]=c.
 $$
 
-于是
+则
 $$
 \mu:=\mathbb E[(-1)^{S_A}]
-=\mathbb E[(-1)^{S_B}]
-=c^4,
+=
+\mathbb E[(-1)^{S_B}]
+=
+c^4,
 $$
-而
+因为 `S_A` 或 `S_B` 各自包含 4 条边的 parity。
+
+同时
 $$
 \rho:=\mathbb E[(-1)^{S_A\oplus S_B}]
-=c^6.
+=
+c^6.
 $$
 
-因此两个 syndrome bit 的联合分布为
+这里共享边 `x_0` 在 `S_A xor S_B` 中抵消，只剩左右共 6 条私有边。
+
+二元 Fourier 反演给出联合分布：
 $$
 q_{ab}
-=
-\mathbb P(S_A=a,S_B=b)
 =
 \frac14
 \left[
@@ -430,7 +476,7 @@ q_{ab}
 \right].
 $$
 
-也就是
+显式写为：
 $$
 q_{00}=\frac{1+2\mu+\rho}{4},
 $$
@@ -441,20 +487,21 @@ $$
 q_{11}=\frac{1-2\mu+\rho}{4}.
 $$
 
-边缘分布为
+边缘分布为：
 $$
 q_A(0)=q_B(0)=\frac{1+\mu}{2},
 \qquad
 q_A(1)=q_B(1)=\frac{1-\mu}{2}.
 $$
 
-所以该局域模型的互信息可以完全写成
+因此
 $$
 I_{\mathrm{pair}}(p)
 =
 \sum_{a,b\in\{0,1\}}
-q_{ab}\log\frac{q_{ab}}{q_A(a)q_B(b)},
+q_{ab}\log\frac{q_{ab}}{q_A(a)q_B(b)}.
 $$
+
 其中
 $$
 \mu=\left(1-\frac{4p}{3}\right)^4,
@@ -462,86 +509,108 @@ $$
 \rho=\left(1-\frac{4p}{3}\right)^6.
 $$
 
-展开后就是
+展开为：
 $$
 I_{\mathrm{pair}}(p)
 =
 q_{00}\log\frac{q_{00}}{\left(\frac{1+\mu}{2}\right)^2}
-+2q_{01}\log\frac{q_{01}}{\left(\frac{1+\mu}{2}\right)\left(\frac{1-\mu}{2}\right)}
++2q_{01}\log\frac{q_{01}}
+{\left(\frac{1+\mu}{2}\right)\left(\frac{1-\mu}{2}\right)}
 +q_{11}\log\frac{q_{11}}{\left(\frac{1-\mu}{2}\right)^2}.
 $$
 
-这里默认对数为自然对数，单位是 nats；若要以 bits 为单位，需要再除以 $\log 2$。
+重要极限：
 
-### 11.3 与自回归模型估计的关系
+- `p=0` 时 syndrome 确定，互信息为 0。
+- depolarizing 单 CSS 投影的无偏点是 `p=3/4`，此时 `r=1/2`，`c=0`，所以 `mu=rho=0`，联合分布均匀独立，互信息为 0。
 
-如果自回归模型只学习这一对 syndrome bits，那么理想情况下它给出的三个熵项应满足
+### 9.3 与自回归估计的对应
+
+若自回归模型只学习这两个 syndrome bits，且模型分布等于上述 `q_ab`，则
 $$
 H_A=H_2\!\left(\frac{1-\mu}{2}\right),
 \qquad
 H_B=H_2\!\left(\frac{1-\mu}{2}\right),
 $$
 $$
-H_{AB}=-\sum_{a,b}q_{ab}\log q_{ab},
+H_{AB}=-\sum_{a,b}q_{ab}\log q_{ab}.
 $$
-从而
+
+因此
 $$
 H_A+H_B-H_{AB}=I_{\mathrm{pair}}(p).
 $$
 
-这个 toy model 的作用是给 syndrome-only 自回归互信息一个解析 benchmark：模型采样估计出来的 `AB/BA` 熵组合，应该在这个受控二变量问题上回到上面的闭式公式。
+这个 toy model 的作用是作为解析 benchmark，而不是完整 Toric Code 的全局互信息公式。
 
-若同时取 plaquette 与 star 两类 syndrome，并在最简共享边模型中让左右两侧都观察同一条边的 $(x_e,z_e)$，则
+### 9.4 同时观察 plaquette 与 star 的最简共享边模型
+
+若左右两侧都直接观察同一条边的完整 Pauli 变量 `(x_e,z_e)`，则
 $$
 (S_A^p,S_A^s)=(x_e,z_e),
 \qquad
-(S_B^p,S_B^s)=(x_e,z_e),
+(S_B^p,S_B^s)=(x_e,z_e).
 $$
-互信息就是单条边 Pauli 噪声的熵：
+
+互信息等于单条 Pauli 噪声变量的熵：
 $$
 I=H(x_e,z_e)
 =
 -(1-p)\log(1-p)-p\log\frac p3.
 $$
 
-这个公式保留了 depolarizing 噪声中 $X/Y/Z$ 三类错误对 plaquette 与 star syndrome 的相关性；若把 $x$ 与 $z$ 扇区错误地当成独立 Bernoulli 噪声，就会丢掉这部分跨扇区相关。
+该式保留了 depolarizing 噪声中 `X/Y/Z` 造成的 `x,z` 相关。若错误地把 `x` 和 `z` 当作独立 Bernoulli 变量，会丢掉这部分相关。
 
-### 11.4 从 toy model 到完整 toric code
+---
 
-完整 toric code 中，区域 `A` 与 `B` 的 syndrome 不是由一对 checks 给出，而是由许多局域 checks 组成。推广 toy model 的正确方式不是把单个 pair 公式机械相乘，而是把 cut 附近的物理边作为共同噪声源。
+## 10. 从 toy model 到完整 Toric Code
 
-设物理错误变量分成三类：
+完整系统中，`A/B` 两侧 syndrome 不是单个 check，而是许多局域 checks 的集合。推广 toy model 的正确方式不是把 `I_pair(p)` 沿 cut 机械相加，而是识别共同噪声源。
+
+把物理错误变量分为：
 $$
-E_A,\qquad E_B,\qquad E_\partial,
+E_A,\qquad E_B,\qquad E_\partial.
 $$
-其中 $E_A$ 只影响区域 `A` 内部 checks，$E_B$ 只影响区域 `B` 内部 checks，$E_\partial$ 是同时影响 cut 两侧 syndrome 的边界错误变量。因为物理噪声独立，
+
+其中：
+
+- `E_A` 只影响 `A` 内部 syndrome；
+- `E_B` 只影响 `B` 内部 syndrome；
+- `E_\partial` 同时影响 cut 两侧 syndrome。
+
+独立物理噪声给出
 $$
 E_A\perp E_B\perp E_\partial.
 $$
 
-syndrome 可以写成
+syndrome 是局域函数：
 $$
 S_A=f_A(E_A,E_\partial),
 \qquad
 S_B=f_B(E_B,E_\partial).
 $$
 
-于是有严格的条件独立关系
+因此有条件独立关系：
 $$
 S_A\perp S_B\mid E_\partial.
 $$
 
-这给出一个有用的上界：
+也就是 Markov 结构：
+$$
+S_A\leftarrow E_\partial\rightarrow S_B.
+$$
+
+数据处理不等式给出严格上界：
 $$
 I(S_A;S_B)\le H(E_\partial).
 $$
 
-若只看单 CSS 扇区，cut 上每条边的相关错误是 Bernoulli$(2p/3)$，所以
+单 CSS depolarizing 投影下，
 $$
-H(E_\partial)=|\partial E|\,H_2\!\left(\frac{2p}{3}\right).
+H(E_\partial)=|\partial E|H_2\!\left(\frac{2p}{3}\right).
 $$
 
-若同时保留 plaquette 与 star syndrome，则每条边的边界错误是 Pauli 变量 $(x,z)$，所以
+完整 Pauli depolarizing 边变量下，
 $$
 H(E_\partial)=|\partial E|
 \left[
@@ -549,59 +618,85 @@ H(E_\partial)=|\partial E|
 \right].
 $$
 
-这个上界是严格的，但通常不是等号；真实 syndrome 还混入了区域内部 parity 噪声，所以每条边界边贡献的有效互信息会小于这个共享错误熵。
+该上界通常不是等号，因为区域内部 parity 噪声会降低边界错误变量在 syndrome 中的可辨识度。
 
-### 11.5 与 $L$ 的标度律
+---
 
-对 torus 上左右二分的标准切割，边界有两条长度为 $L$ 的界面，因此
-$$
-|\partial E|\propto 2L.
-$$
+## 11. 边界律与有限相关长度
 
-如果噪声率处在有限相关长度区域，远离 cut 的 syndrome 对跨区互信息贡献指数衰减，互信息主要由 cut 附近宽度 $O(\xi(p))$ 的边界带贡献。于是完整 toric code 的 syndrome-only 互信息具有边界律
+若噪声率处在有限相关长度区域，远离 cut 的 syndrome 对跨区互信息的贡献随距离指数衰减。互信息主要来自 cut 附近宽度 `O(xi(p))` 的边界带。
+
+因此大尺寸下自然得到边界律：
 $$
 I_L(A;B)
 =
 \alpha(p)|\partial A|+\beta(p)+o(1).
 $$
 
-对标准半系统切割，
+对 torus 上标准半系统切割，边界有两条长度为 `L` 的界面，因此
+$$
+|\partial A|=2L,
+$$
+并得到
 $$
 I_L(A;B)
 =
 2\alpha(p)L+\beta(p)+o(1).
 $$
 
-这里 $\alpha(p)$ 是单位边界长度的有效 syndrome 相关密度。toy model 中的 $I_{\mathrm{pair}}(p)$ 可以看作 $\alpha(p)$ 的最小局域近似，但一般不等于真实 $\alpha(p)$，因为完整 toric code 的边界 checks 共享更多局域约束，并且存在全局 parity 约束。
+这里：
 
-对自回归模型来说，最直接的验证方式是对多个 $L$ 训练或采样同一类模型，然后拟合
+- `alpha(p)` 是单位边界长度的有效 syndrome 互信息密度；
+- `beta(p)` 是次领先常数项，依赖几何、坐标表示和拟合窗口；
+- `I_pair(p)` 只能看作 `alpha(p)` 的局域 sanity check，通常不等于真实 `alpha(p)`。
+
+若使用 full check 坐标而不是 independent generators，torus 上 plaquette 与 star 的全局 parity constraints 可能贡献常数互信息。单 CSS 扇区可能是 1 bit，plaquette + star 两个扇区可能是 2 bits。当前仓库使用 independent syndrome generators，因此这类 full-check 冗余常数通常已被 gauge fixed 掉，不能自动加进 `beta(p)`。
+
+---
+
+## 12. 数值验证方式
+
+对多个 `L` 训练或采样同一类模型，得到
+$$
+\widehat I(L)=\widehat H_A+\widehat H_B-\widehat H_{AB}.
+$$
+
+再拟合
 $$
 \widehat I(L)=aL+b.
 $$
 
-若采用左右二分且有两条 cut，则
+若采用 torus 左右半切割且有两条 cut，则
 $$
 a\approx 2\alpha(p),
 \qquad
 b\approx \beta(p).
 $$
 
-如果使用全部 checks 坐标而不是独立 syndrome 生成元，$\beta(p)$ 还可能包含全局 parity 约束带来的常数项；若使用独立生成元表示，这个常数项通常被规范固定掉。
+数值报告必须同时给出：
+
+- `H_A, H_B, H_AB, I_hat`；
+- Monte Carlo bootstrap 误差；
+- 多个 `train_seed` 的均值与方差；
+- syndrome 坐标表示是 full checks 还是 independent generators；
+- 对数单位是 nats 还是 bits。
 
 ---
 
-## 12. 总结
+## 13. 总结
 
-对 toric code 的 `syndrome-only` 互信息计算，可以归纳为以下逻辑：
+这条 syndrome-only 互信息计算路径可以概括为：
 
-1. 将 syndrome 按空间切分为 `A` 与 `B`
-2. 用自回归模型表示 syndrome 联合分布
-3. 通过 `AB` 排序，把 `A` 变成前缀，从而得到 `H(A)` 和 `H(A,B)`
-4. 通过 `BA` 排序，把 `B` 变成前缀，从而得到 `H(B)`
-5. 最终用
-$$
-I(A;B)=H(A)+H(B)-H(A,B)
-$$
-组合出 bipartite mutual information
+1. 将 syndrome 按空间切成 `A/B`。
+2. 构造 `AB` 和 `BA` 两种自回归排序。
+3. 用 `AB` 前缀得到 `H(A)`，用 `AB` 全序列得到 `H(A,B)`。
+4. 用 `BA` 前缀得到 `H(B)`。
+5. 组合
+   $$
+   I_{\mathrm{comp}}=H_A+H_B-H_{AB}.
+   $$
+6. 若 `q_AB` 与 `q_BA` 都逼近同一个底层分布，则该量近似真实 syndrome 互信息。
+7. 用 pair model 闭式公式检查局域解析基准。
+8. 用 Markov 结构和有限相关长度解释完整系统的边界律。
 
-因此，这个方法的关键不在于对全部 syndrome 配置做显式求和，而在于利用自回归模型的前缀概率结构，把边缘熵和联合熵都化成可计算的负对数概率平均值。
+修订后的关键逻辑是：**自回归部分给出可计算的模型互信息估计器；toy model 给出解析 benchmark；完整 Toric Code 的边界律来自共同边界噪声源、局域性和有限相关长度，而不是来自 pair model 的机械相乘。**

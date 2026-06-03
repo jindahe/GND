@@ -1,6 +1,11 @@
 __pycache__/
 */__pycache__/
+**/__pycache__/
+*.pyc
+logs/
 net/code_capacity/*.pt
+net/**/*.pt
+net/**/*.pth
 
 # Generated syndrome datasets and checkpoints
 net/syndrome_data/
@@ -10,6 +15,7 @@ net/syndrome_models/
 net/mi_scaling/**/datasets/
 net/mi_scaling/**/models/
 net/mi_scaling/**/results/
+net/mi_scaling/**/L*_tseed*/
 
 # Generated stability raw per-seed outputs: keep grouped summaries, ignore raw internals
 net/mi_stability/mi_stability.png
@@ -27,3 +33,5 @@ code/tor_n72_d6_k2_seed0
 code/tor_n128_d8_k2_seed0
 code/tor_n200_d10_k2_seed0
 code/tor_n288_d12_k2_seed0
+code/tor_n392_d14_k2_seed0
+code/tor_n512_d16_k2_seed0

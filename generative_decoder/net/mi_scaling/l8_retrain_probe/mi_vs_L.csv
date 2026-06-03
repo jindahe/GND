@@ -1,2 +1,0 @@
-L,n,k,seed,er,e_model,n_type,axis,cut,len_A,len_B,balanced_cut,H_AB,H_A,H_B,MI,bootstrap_std,bootstrap_ci95_low,bootstrap_ci95_high,path
-8,128,2,0,0.05,dep,made,x,4,63,63,True,37.25197982788086,19.499225616455078,19.69192886352539,1.9391746520996094,0.04561192676914745,1.8601387023925782,2.0386720657348634,/home/jinboyu/GND/generative_decoder/net/mi_scaling/l8_retrain_probe/results/made_tor_n128_d8_k2_seed0_er0.05_dep_xmid.json

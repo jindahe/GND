@@ -1,2 +1,0 @@
-mi_samples,n_repeats,eval_seeds,mi_mean,mi_std_across_seeds,mi_min,mi_max,mean_bootstrap_std
-40000,5,"[0, 1, 2, 3, 4]",1.9012725830078125,0.02803295847472655,1.8666515350341797,1.934865951538086,0.04677129494458107
