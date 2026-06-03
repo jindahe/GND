@@ -1,6 +1,8 @@
+import random
 import sys
 from pathlib import Path
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -29,6 +31,10 @@ def get_device():
             f"CUDA device {args.device} was requested but torch.cuda.is_available() is False in this environment"
         )
     return device
+
+
+def training_seed_suffix():
+    return f"_tseed{args.train_seed}" if args.train_seed != 0 else ""
 
 
 def resolve_dataset_path():
@@ -63,7 +69,7 @@ def resolve_checkpoint_path():
     suffix = f"{args.partition_order}_{args.partition_axis}{args.cut if args.cut is not None else 'mid'}"
     filename = (
         f"{args.n_type}_{args.c_type}_n{args.n}_d{args.d}_k{args.k}_seed{args.seed}"
-        f"_er{args.er}_{args.e_model}_{suffix}.pt"
+        f"_er{args.er}_{args.e_model}{training_seed_suffix()}_{suffix}.pt"
     )
     return output_dir / filename
 
@@ -78,6 +84,47 @@ def resolve_record_path(checkpoint_path):
 
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir / f"{checkpoint_path.stem}.json"
+
+
+def build_checkpoint_payload(model, build_meta, n_bits, model_param_count, dataset_path, data, history):
+    return {
+        "model_state_dict": {key: value.detach().cpu() for key, value in model.state_dict().items()},
+        "model_config": {
+            "n_type": args.n_type,
+            "n_bits": n_bits,
+            "depth": args.depth,
+            "width": args.width,
+            "effective_width": build_meta.get("effective_width"),
+            "made_activation": args.made_activation,
+            "made_residual": args.made_residual,
+            "parameter_count": model_param_count,
+            "hidden_dim": args.hidden_dim,
+            "d_model": args.d_model,
+            "n_heads": args.n_heads,
+            "d_ff": args.d_ff,
+            "n_layers": args.n_layers,
+            "dtype": args.dtype,
+        },
+        "training_config": {
+            "device": str(torch.device(args.device)),
+            "train_seed": args.train_seed,
+            "epoch": args.epoch,
+            "batch": args.batch,
+            "lr": args.lr,
+            "weight_decay": args.weight_decay,
+            "lr_decay_factor": args.lr_decay_factor,
+            "lr_decay_patience": args.lr_decay_patience,
+            "min_lr": args.min_lr,
+            "log_every": args.log_every,
+            "early_stop_patience": args.early_stop_patience,
+            "early_stop_min_delta": args.early_stop_min_delta,
+        },
+        "dataset_path": str(dataset_path),
+        "dataset_meta": data["meta"],
+        "partition": data["partition"],
+        "applied_order": data["applied_order"],
+        "history": history,
+    }
 
 
 def count_parameters(model):
@@ -166,6 +213,11 @@ def main():
     started_at = utc_timestamp()
     dtype = get_dtype()
     device = get_device()
+    random.seed(args.train_seed)
+    np.random.seed(args.train_seed)
+    torch.manual_seed(args.train_seed)
+    if device.type == "cuda":
+        torch.cuda.manual_seed_all(args.train_seed)
     dataset_path = resolve_dataset_path()
     data = torch.load(dataset_path)
 
@@ -200,9 +252,9 @@ def main():
     }
     best_state_dict = None
     epochs_without_improvement = 0
-
     print(f"dataset: {dataset_path}")
     print(f"device: {device}")
+    print(f"train_seed: {args.train_seed}")
     print(f"train/val/test: {tuple(train.shape)} {tuple(val.shape)} {tuple(test.shape)}")
     if args.n_type == "made":
         print(
@@ -273,43 +325,15 @@ def main():
     record_path = resolve_record_path(checkpoint_path)
 
     if args.save:
-        checkpoint = {
-            "model_state_dict": {key: value.detach().cpu() for key, value in model.state_dict().items()},
-            "model_config": {
-                "n_type": args.n_type,
-                "n_bits": n_bits,
-                "depth": args.depth,
-                "width": args.width,
-                "effective_width": build_meta.get("effective_width"),
-                "made_activation": args.made_activation,
-                "made_residual": args.made_residual,
-                "parameter_count": model_param_count,
-                "hidden_dim": args.hidden_dim,
-                "d_model": args.d_model,
-                "n_heads": args.n_heads,
-                "d_ff": args.d_ff,
-                "n_layers": args.n_layers,
-                "dtype": args.dtype,
-            },
-            "training_config": {
-                "device": str(device),
-                "epoch": args.epoch,
-                "batch": args.batch,
-                "lr": args.lr,
-                "weight_decay": args.weight_decay,
-                "lr_decay_factor": args.lr_decay_factor,
-                "lr_decay_patience": args.lr_decay_patience,
-                "min_lr": args.min_lr,
-                "log_every": args.log_every,
-                "early_stop_patience": args.early_stop_patience,
-                "early_stop_min_delta": args.early_stop_min_delta,
-            },
-            "dataset_path": str(dataset_path),
-            "dataset_meta": data["meta"],
-            "partition": data["partition"],
-            "applied_order": data["applied_order"],
-            "history": history,
-        }
+        checkpoint = build_checkpoint_payload(
+            model=model,
+            build_meta=build_meta,
+            n_bits=n_bits,
+            model_param_count=model_param_count,
+            dataset_path=dataset_path,
+            data=data,
+            history=history,
+        )
         torch.save(checkpoint, checkpoint_path)
         print(f"saved: {checkpoint_path}")
 
@@ -346,6 +370,7 @@ def main():
         },
         "training_config": {
             "device": str(device),
+            "train_seed": args.train_seed,
             "epoch": args.epoch,
             "batch": args.batch,
             "lr": args.lr,

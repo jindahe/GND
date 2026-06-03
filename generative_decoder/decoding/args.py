@@ -56,6 +56,8 @@ par_common.add_argument('-shuffle', type=str2bool, nargs='?', const=True, defaul
         help='if true, shuffle samples before splitting datasets, default: %(default)s')
 par_common.add_argument('-split_seed', type=int, default=0,
         help='shuffle seed used by dataset-generation scripts, default: %(default)d')
+par_common.add_argument('-train_seed', type=int, default=0,
+        help='random seed used for model initialization and training-order stochasticity, default: %(default)d')
 par_common.add_argument('-partition_axis', type=str, default='x', choices=['x', 'y'],
         help='spatial axis used for toric syndrome cuts, default: %(default)s')
 par_common.add_argument('-cut', type=int, default=None,
@@ -141,7 +143,6 @@ par_common.add_argument('-early_stop_patience', type=int, default=20,
         help='stop training after this many unimproved validation epochs; set <=0 to disable, default: %(default)d')
 par_common.add_argument('-early_stop_min_delta', type=float, default=0.0,
         help='minimum validation-NLL improvement required to reset early stopping, default: %(default)s')
-
 par_common.add_argument('-save', type=str2bool, nargs='?', const=True, default=False,
         help='save the results if true, default: %(default)s')
         

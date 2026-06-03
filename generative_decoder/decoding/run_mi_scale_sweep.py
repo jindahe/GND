@@ -46,6 +46,7 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=0, help="Code seed.")
     parser.add_argument("--error-seed", type=int, default=51697, help="Error-sampling seed.")
     parser.add_argument("--split-seed", type=int, default=0, help="Dataset split seed.")
+    parser.add_argument("--train-seed", type=int, default=0, help="Training RNG seed.")
     parser.add_argument("--bootstrap-seed", type=int, default=0, help="Bootstrap seed.")
     parser.add_argument("--er", type=float, default=0.05, help="Physical error rate.")
     parser.add_argument("--e-model", type=str, default="dep", help="Physical error model.")
@@ -155,6 +156,10 @@ def build_env():
     return env
 
 
+def training_seed_suffix(train_seed):
+    return f"_tseed{train_seed}" if train_seed != 0 else ""
+
+
 def run_step(cmd, env):
     print("exec:", " ".join(cmd), flush=True)
     subprocess.run(cmd, cwd=PROJECT_ROOT, env=env, check=True)
@@ -171,16 +176,18 @@ def dataset_path(dataset_dir, l_value, seed, er, e_model, order, axis, cut):
     return dataset_dir / f"tor_n{n}_d{l_value}_k2_seed{seed}_er{er}_{e_model}_{order}_{axis}{cut_suffix}.pt"
 
 
-def model_path(model_dir, n_type, l_value, seed, er, e_model, order, axis, cut):
+def model_path(model_dir, n_type, l_value, seed, er, e_model, order, axis, cut, train_seed):
     n = 2 * l_value * l_value
     cut_suffix = cut if cut is not None else "mid"
-    return model_dir / f"{n_type}_tor_n{n}_d{l_value}_k2_seed{seed}_er{er}_{e_model}_{order}_{axis}{cut_suffix}.pt"
+    train_suffix = training_seed_suffix(train_seed)
+    return model_dir / f"{n_type}_tor_n{n}_d{l_value}_k2_seed{seed}_er{er}_{e_model}{train_suffix}_{order}_{axis}{cut_suffix}.pt"
 
 
-def result_path(result_dir, n_type, l_value, seed, er, e_model, axis, cut):
+def result_path(result_dir, n_type, l_value, seed, er, e_model, axis, cut, train_seed):
     n = 2 * l_value * l_value
     cut_suffix = cut if cut is not None else "mid"
-    return result_dir / f"{n_type}_tor_n{n}_d{l_value}_k2_seed{seed}_er{er}_{e_model}_{axis}{cut_suffix}.json"
+    train_suffix = training_seed_suffix(train_seed)
+    return result_dir / f"{n_type}_tor_n{n}_d{l_value}_k2_seed{seed}_er{er}_{e_model}{train_suffix}_{axis}{cut_suffix}.json"
 
 
 def validate_l_values(l_values, allow_unbalanced):
@@ -281,6 +288,8 @@ def training_common_args(args, l_value, order, dataset_dir, model_dir):
         args.e_model,
         "-er",
         str(args.er),
+        "-train_seed",
+        str(args.train_seed),
         "-n_type",
         args.n_type,
         "-device",
@@ -354,7 +363,18 @@ def training_common_args(args, l_value, order, dataset_dir, model_dir):
 
 
 def maybe_train_model(args, l_value, order, dataset_dir, model_dir, env):
-    path = model_path(model_dir, args.n_type, l_value, args.seed, args.er, args.e_model, order, args.partition_axis, args.cut)
+    path = model_path(
+        model_dir,
+        args.n_type,
+        l_value,
+        args.seed,
+        args.er,
+        args.e_model,
+        order,
+        args.partition_axis,
+        args.cut,
+        args.train_seed,
+    )
     if path.exists() and args.skip_existing:
         print(f"reuse model: {path}", flush=True)
         return
@@ -364,7 +384,17 @@ def maybe_train_model(args, l_value, order, dataset_dir, model_dir, env):
 
 
 def maybe_evaluate_mi(args, l_value, model_dir, result_dir, env):
-    path = result_path(result_dir, args.n_type, l_value, args.seed, args.er, args.e_model, args.partition_axis, args.cut)
+    path = result_path(
+        result_dir,
+        args.n_type,
+        l_value,
+        args.seed,
+        args.er,
+        args.e_model,
+        args.partition_axis,
+        args.cut,
+        args.train_seed,
+    )
     if path.exists() and args.skip_existing:
         print(f"reuse result: {path}", flush=True)
         return path
@@ -387,6 +417,8 @@ def maybe_evaluate_mi(args, l_value, model_dir, result_dir, env):
         args.e_model,
         "-er",
         str(args.er),
+        "-train_seed",
+        str(args.train_seed),
         "-n_type",
         args.n_type,
         "-device",
@@ -449,6 +481,7 @@ def write_sweep_manifest(args, result_paths, summary_dir):
             "seed": args.seed,
             "error_seed": args.error_seed,
             "split_seed": args.split_seed,
+            "train_seed": args.train_seed,
             "bootstrap_seed": args.bootstrap_seed,
             "er": args.er,
             "e_model": args.e_model,

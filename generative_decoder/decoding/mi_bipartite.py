@@ -31,6 +31,10 @@ def get_device():
     return device
 
 
+def training_seed_suffix():
+    return f"_tseed{args.train_seed}" if args.train_seed != 0 else ""
+
+
 def resolve_checkpoint_path(order):
     explicit = args.ab_checkpoint if order == "AB" else args.ba_checkpoint
     if explicit:
@@ -46,7 +50,7 @@ def resolve_checkpoint_path(order):
     suffix = f"{order}_{args.partition_axis}{args.cut if args.cut is not None else 'mid'}"
     filename = (
         f"{args.n_type}_{args.c_type}_n{args.n}_d{args.d}_k{args.k}_seed{args.seed}"
-        f"_er{args.er}_{args.e_model}_{suffix}.pt"
+        f"_er{args.er}_{args.e_model}{training_seed_suffix()}_{suffix}.pt"
     )
     return checkpoint_dir / filename
 
@@ -248,6 +252,7 @@ def main():
             "e_model": args.e_model,
             "er": args.er,
         },
+        "train_seed": args.train_seed,
         "checkpoint_ab": str(ab_path),
         "checkpoint_ba": str(ba_path),
         "device": str(device),
