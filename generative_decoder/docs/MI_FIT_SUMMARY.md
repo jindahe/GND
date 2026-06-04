@@ -11,13 +11,16 @@ I(L) = 2 alpha(p) L + beta(p) + o(1), p = 0.05
 ## Scope
 
 - Final CSV for plotting/fitting: `docs/MI_FIT_POINTS.csv`
-- Available completed L values in local records: `4, 6, 8, 10, 12, 14, 16`
+- Available completed L values in local records: `4, 6, 8, 10, 12, 14, 16, 18`
 - Requested but unavailable L values: `2`
 - `L=8` has a completed 8-seed `n_train=400k` recheck and is now included in
   the recommended fit. Its mean is substantially above the previous historical
   single-point recommendation.
 - `L=14` has a completed 8-seed result and is now included in the recommended
   fit, but its mean sits below the simple `L=12` to `L=16` interpolation.
+- `L=18` has a completed 8-seed pilot and is included as a provisional
+  recommended fit point. Its cv is at the usable-baseline gate, and seed 5 has
+  abnormal training/MI diagnostics.
 - Large generated artifacts under `net/` are not part of the lightweight GitHub record.
 - Use only rows with `include_in_recommended_fit=yes` for the current recommended fit curve.
 
@@ -32,6 +35,7 @@ I(L) = 2 alpha(p) L + beta(p) + o(1), p = 0.05
 | 12 | 288 | p9_largeL_ntrain200k | 8 | 1,2,3,4,5,6,7,8 | 200000 | 5.384724 | 0.321396 | 0.073780 | current_multi_seed_mean |
 | 14 | 392 | p17_l14_ntrain400k | 8 | 1,2,3,4,5,6,7,8 | 400000 | 6.074064 | 0.313907 | 0.088458 | current_multi_seed_mean |
 | 16 | 512 | p16_l16_ntrain400k | 8 | 1,2,3,4,5,6,7,8 | 400000 | 8.133990 | 0.382952 | 0.094499 | current_multi_seed_mean |
+| 18 | 648 | p19_l18_ntrain400k_pilot | 8 | 1,2,3,4,5,6,7,8 | 400000 | 9.573411 | 0.574411 | 0.104420 | current_multi_seed_mean |
 
 ## Source Aggregates
 
@@ -67,6 +71,7 @@ The CSV keeps every recovered run-level aggregate so older candidates remain aud
 | 16 | p12_l16_ntrain300k | 8 | 1,2,3,4,5,6,7,8 | 8.114293 | 0.514215 | 0.092206 | no | previous recommended fit point; superseded by p16_l16_ntrain400k 8-seed result |
 | 16 | p15_l16_ntrain400k | 2 | 1,2 | 8.123028 | 0.470572 | 0.094529 | no | partial 2-seed comparison only; seed 3 incomplete |
 | 16 | p16_l16_ntrain400k | 8 | 1,2,3,4,5,6,7,8 | 8.133990 | 0.382952 | 0.094499 | yes | recommended fit point; clean 8-seed ntrain400k result with lower seed spread than p12 |
+| 18 | p19_l18_ntrain400k_pilot | 8 | 1,2,3,4,5,6,7,8 | 9.573411 | 0.574411 | 0.104420 | yes | provisional recommended fit point; completed 8-seed L18 pilot with cv=0.060001 at the usable-baseline gate; seed 5 BA training showed abnormal late-epoch NLL and seed 5 MI is high |
 
 ## Missing L Values
 
@@ -81,6 +86,9 @@ The CSV keeps every recovered run-level aggregate so older candidates remain aud
 - `L=10/12` recommended points are 8-seed means from `p9_largeL_ntrain200k`.
 - `L=14` recommended point is the 8-seed mean from `p17_l14_ntrain400k`.
 - `L=16` recommended point is the 8-seed mean from `p16_l16_ntrain400k`.
+- `L=18` recommended point is the provisional 8-seed mean from
+  `p19_l18_ntrain400k_pilot`; it should be treated as borderline because
+  cv=`0.060001` and seed 5 has abnormal training/MI diagnostics.
 - `L=14` remains notable because its 8-seed mean is lower than the simple
   interpolation between the neighboring `L=12` and `L=16` recommended points.
 - `p15_l16_ntrain400k` currently has only 2 completed seeds and is kept as a comparison row, not the main fit point.

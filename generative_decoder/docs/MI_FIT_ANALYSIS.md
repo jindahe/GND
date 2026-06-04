@@ -30,16 +30,18 @@ historical single-point rows with zero train-seed spread.
 | 12 | 288 | `p9_largeL_ntrain200k` | 8 | 200000 | 5.384724 | 0.321396 | 0.073780 |
 | 14 | 392 | `p17_l14_ntrain400k` | 8 | 400000 | 6.074064 | 0.313907 | 0.088458 |
 | 16 | 512 | `p16_l16_ntrain400k` | 8 | 400000 | 8.133990 | 0.382952 | 0.094499 |
+| 18 | 648 | `p19_l18_ntrain400k_pilot` | 8 | 400000 | 9.573411 | 0.574411 | 0.104420 |
 
 ## Fit Summary
 
 | Window | Points | n_points | 2 alpha | alpha | beta | RSS |
 |---|---|---:|---:|---:|---:|---:|
-| all recommended | `L=4,6,8,10,12,14,16` | 7 | 0.590068 | 0.295034 | -1.827678 | 0.960827 |
-| bridge and large-L | `L=8,10,12,14,16` | 5 | 0.668566 | 0.334283 | -2.838209 | 0.358050 |
-| current multi-seed large-L | `L=10,12,14,16` | 4 | 0.701132 | 0.350566 | -3.294127 | 0.315629 |
-| without L14 | `L=10,12,16` | 3 | 0.733107 | 0.366553 | -3.549929 | 0.029354 |
-| largest three | `L=12,14,16` | 3 | 0.687317 | 0.343658 | -3.091507 | 0.313085 |
+| all recommended | `L=4,6,8,10,12,14,16,18` | 8 | 0.622562 | 0.311281 | -2.087630 | 1.315597 |
+| bridge and large-L | `L=8,10,12,14,16,18` | 6 | 0.695525 | 0.347763 | -3.125775 | 0.425885 |
+| current multi-seed large-L | `L=10,12,14,16,18` | 5 | 0.725849 | 0.362924 | -3.590730 | 0.340066 |
+| without L14 | `L=10,12,16,18` | 4 | 0.725849 | 0.362924 | -3.466458 | 0.031198 |
+| `L>=12` | `L=12,14,16,18` | 4 | 0.731299 | 0.365650 | -3.677944 | 0.338878 |
+| largest three | `L=14,16,18` | 3 | 0.874837 | 0.437418 | -6.070234 | 0.064171 |
 
 ## L14 Diagnostic
 
@@ -61,9 +63,58 @@ slope than the `without L14` fit. It should not be hidden or silently dropped.
 The recommended analysis therefore keeps both with-`L14` and without-`L14`
 windows in view.
 
-## Window Details
+## L18 Diagnostic
 
-### All Recommended
+The `L=18` pilot completed 8 train seeds with the same `n_train=400k`,
+`batch=512`, and learning schedule as the `L=14/16` runs. It is included as a
+provisional recommended point because it is the only completed largest-size
+aggregate, but its stability is borderline.
+
+Per-seed MI:
+
+| train_seed | MI | bootstrap_std | note |
+|---:|---:|---:|---|
+| 1 | 9.065102 | 0.102899 |  |
+| 2 | 8.760048 | 0.108807 |  |
+| 3 | 9.347771 | 0.102633 |  |
+| 4 | 9.553818 | 0.109733 |  |
+| 5 | 10.379700 | 0.094562 | high MI; BA training diagnostic |
+| 6 | 9.807640 | 0.105091 |  |
+| 7 | 10.334045 | 0.103782 | high MI |
+| 8 | 9.339165 | 0.107854 |  |
+
+Aggregate diagnostics:
+
+| Subset | seeds | mean MI | seed_std | cv | min | max |
+|---|---:|---:|---:|---:|---:|---:|
+| all seeds | 8 | 9.573411 | 0.574411 | 0.060001 | 8.760048 | 10.379700 |
+| without seed 5 | 7 | 9.458227 | 0.510990 | 0.054026 | 8.760048 | 10.334045 |
+| without seeds 5 and 7 | 6 | 9.312257 | 0.366541 | 0.039361 | 8.760048 | 9.807640 |
+| seeds 1..3 pilot | 3 | 9.057640 | 0.293932 | 0.032451 | 8.760048 | 9.347771 |
+| seeds 4..8 extension | 5 | 9.882874 | 0.463667 | 0.046916 | 9.339165 | 10.379700 |
+
+The full 8-seed cv is `0.060001`, effectively at but technically just above
+the `0.06` usable-baseline gate. Seed 5 is the most concerning point: its `BA`
+training record selected best epoch 19, later epochs showed NLL values in the
+`6e3` range, and its final MI is the maximum of the set. Seed 7 is also high
+but did not show the same obvious training failure signature.
+
+Interpretation:
+
+- Do not treat the `L=18` aggregate as a clean formal result yet.
+- Keep it in the fit as the current provisional largest-size point, but report
+  sensitivity to seed 5 and seed 7 whenever using it.
+- Before rerunning `L=10/12`, inspect `L=18` seed-level behavior and consider
+  either a focused seed-5 rerun under a new run id or additional seeds if the
+  large-`L` conclusion depends on this point.
+
+## L<=16 Window Details
+
+The detailed residual and leave-one-out tables below are the `L<=16`
+diagnostics from before adding the provisional `L=18` point. The current
+post-`L18` fit summary is the table above.
+
+### All Recommended Through L16
 
 Fit window: `L=4,6,8,10,12,14,16`
 
@@ -257,16 +308,17 @@ Interpretation:
 
 ## Conclusions
 
-- The current multi-seed large-`L` fit gives `2 alpha = 0.701132` and
-  `alpha = 0.350566` using `L=10,12,14,16`.
+- The current multi-seed large-`L` fit including provisional `L=18` gives
+  `2 alpha = 0.725849` and `alpha = 0.362924` using `L=10,12,14,16,18`.
 - Excluding the low `L=14` point raises the multi-seed slope diagnostic to
-  `2 alpha = 0.733107` and `alpha = 0.366553`.
+  `2 alpha = 0.725849` and `alpha = 0.362924` for `L=10,12,16,18`, with much
+  lower RSS because `L=14` is the main point below the local trend.
 - Including the rechecked `L=8` bridge point gives a lower bridge-plus-large
-  slope, `2 alpha = 0.668566`, than the `L>=10` multi-seed window. The
+  slope, `2 alpha = 0.695525`, than the `L>=10` multi-seed window. The
   difference is now a real 8-seed diagnostic rather than a historical
   single-point artifact.
 - The all-recommended fit is useful as a recorded full-curve summary, but the
   small historical sizes make it a poor standalone asymptotic estimate.
-- The next experiment should prioritize an `L=18, n_train=400k` pilot. The
-  `L=8` bridge-point recheck is now complete, and the largest remaining gap is
-  anchoring the large-size extrapolation beyond `L=16`.
+- The next analysis step should focus on `L=18` seed-level stability,
+  especially seed 5 and seed 7, before treating the `L=18` point as a clean
+  formal result or using it to justify rerunning `L=10/12`.

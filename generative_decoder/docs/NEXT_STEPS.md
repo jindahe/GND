@@ -7,6 +7,11 @@ Update on 2026-06-04: the `L=8, n_train=400k` recheck has completed as
 `p18_l8_ntrain400k` with 8 train seeds and now supersedes the previous
 historical single-point `L=8` recommendation.
 
+Second update on 2026-06-04: the `L=18, n_train=400k` pilot has completed as
+`p19_l18_ntrain400k_pilot` with 8 train seeds. It is now recorded as a
+provisional recommended largest-size point, but its cv is at the usable-baseline
+gate and seed 5 has abnormal training/MI diagnostics.
+
 The active fit target remains:
 
 ```text
@@ -27,11 +32,13 @@ Use `docs/MI_FIT_POINTS.csv` rows with
 | 12 | 288 | `p9_largeL_ntrain200k` | 8 | 200000 | 5.384724 | 0.321396 | 0.073780 | current multi-seed mean |
 | 14 | 392 | `p17_l14_ntrain400k` | 8 | 400000 | 6.074064 | 0.313907 | 0.088458 | current multi-seed mean |
 | 16 | 512 | `p16_l16_ntrain400k` | 8 | 400000 | 8.133990 | 0.382952 | 0.094499 | current multi-seed mean |
+| 18 | 648 | `p19_l18_ntrain400k_pilot` | 8 | 400000 | 9.573411 | 0.574411 | 0.104420 | provisional multi-seed mean |
 
 Current strengths:
 
-- The bridge and large-`L` range now includes `L=8,10,12,14,16` with a
+- The bridge and large-`L` range now includes `L=8,10,12,14,16,18` with a
   multi-seed `L=8` recheck.
+- The largest completed size is now `L=18`.
 - `L=14` is no longer missing and has an 8-seed result.
 - `L=16` has a cleaner 8-seed `n_train=400k` result than the previous
   `p12_l16_ntrain300k` reference.
@@ -46,8 +53,8 @@ Current weaknesses:
   `L=8` point, so bridge-window fits changed materially.
 - `L=14` is statistically usable after extension to 8 seeds, but its mean sits
   below the simple interpolation between the current `L=12` and `L=16` points.
-- The largest completed size is still `L=16`, so the asymptotic region is not
-  yet strongly constrained.
+- `L=18` is only a provisional largest-size point: cv=`0.060001`, seed 5 has
+  abnormal `BA` training diagnostics, and seeds 5/7 are high-MI points.
 - `L=10/12` use `n_train=200k`, while `L=14/16` use `n_train=400k`.
 
 ## Immediate Priority
@@ -212,11 +219,27 @@ Historical decision gates after seeds `1..3`:
 
 ### P3. Start An `L=18` Pilot
 
-Status: next active experiment.
+Status: completed as `p19_l18_ntrain400k_pilot`.
 
-After the fit analysis and completed `L=8` recheck, begin probing a larger
-size. The current largest completed size is `L=16`, so `L=18` is the next
-natural test of the large-`L` trend.
+Final 8-seed aggregate:
+
+```text
+mean(MI) = 9.573411
+seed_std = 0.574411
+cv = 0.060001
+mean bootstrap std = 0.104420
+min/max = 8.760048 / 10.379700
+```
+
+Decision:
+
+- The 3-seed pilot had cv=`0.032451`, so it was extended to seeds `4..8`.
+- The final 8-seed cv is at the usable-baseline gate.
+- Seed 5 has abnormal `BA` training diagnostics and the highest MI.
+- Seed 7 is also high, but without the same saved-metric failure signature.
+- Treat `L=18` as provisional until seed-level sensitivity is resolved.
+
+The original pilot configuration was:
 
 Recommended pilot:
 
@@ -257,11 +280,23 @@ Operational rule:
 - Do not mix different batch sizes or learning configurations under the same
   run id.
 
-Decision gates:
+Historical decision gates:
 
 - If `cv <= 0.06`, extend to seeds `4..8`.
 - If `cv > 0.06`, inspect training records and seed-level MI before expanding.
 - Compare the 3-seed mean against extrapolations from `L=12,14,16`.
+
+### P3b. Diagnose The `L=18` Seed Split
+
+This is now the immediate priority before launching more expensive reruns.
+
+Required diagnostics:
+
+- Compare fits with all `L=18` seeds, without seed 5, and without seeds 5/7.
+- Inspect the seed 5 `BA` training record and late-epoch NLL history.
+- Decide whether to rerun seed 5 under a new run id or add more seeds, rather
+  than mixing any changed configuration into `p19_l18_ntrain400k_pilot`.
+- Do not use the `L=18` point as a clean formal result until this is resolved.
 
 ### P4. Do Not Immediately Rerun `L=10/12`
 
@@ -309,6 +344,7 @@ Current status:
 | 12 | usable 8-seed baseline |
 | 14 | usable 8-seed baseline, but low relative to L12-L16 interpolation |
 | 16 | usable 8-seed baseline and current best L16 point |
+| 18 | provisional 8-seed baseline; cv at gate and seed 5 diagnostic issue |
 
 ## Recommended Execution Order
 
@@ -317,9 +353,11 @@ Current status:
 3. Run `L=8, n_train=400k, seeds=1..3`. Completed.
 4. Decide whether to extend `L=8` to seeds `4..8`. Completed; extended and
    finished.
-5. Start `L=18, n_train=400k, seeds=1..3`.
-6. Decide whether to extend `L=18` to seeds `4..8`.
-7. Rerun `L=10/12` at `400k` only if the fit analysis or `L=8/L18` results
+5. Start `L=18, n_train=400k, seeds=1..3`. Completed.
+6. Decide whether to extend `L=18` to seeds `4..8`. Completed; extended and
+   finished.
+7. Diagnose the `L=18` seed split, especially seed 5 and seed 7.
+8. Rerun `L=10/12` at `400k` only if the fit analysis or `L=8/L18` results
    show that the mixed `n_train` protocol is limiting the conclusion.
 
 ## Reporting Rules
