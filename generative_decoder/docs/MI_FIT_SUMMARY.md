@@ -13,6 +13,9 @@ I(L) = 2 alpha(p) L + beta(p) + o(1), p = 0.05
 - Final CSV for plotting/fitting: `docs/MI_FIT_POINTS.csv`
 - Available completed L values in local records: `4, 6, 8, 10, 12, 14, 16`
 - Requested but unavailable L values: `2`
+- `L=8` has a completed 8-seed `n_train=400k` recheck and is now included in
+  the recommended fit. Its mean is substantially above the previous historical
+  single-point recommendation.
 - `L=14` has a completed 8-seed result and is now included in the recommended
   fit, but its mean sits below the simple `L=12` to `L=16` interpolation.
 - Large generated artifacts under `net/` are not part of the lightweight GitHub record.
@@ -24,7 +27,7 @@ I(L) = 2 alpha(p) L + beta(p) + o(1), p = 0.05
 |---:|---:|---|---:|---|---:|---:|---:|---:|---|
 | 4 | 32 | p8_made_plateau_long_468 | 1 |  |  | 1.074160 | 0.000000 | 0.021748 | historical_tracked_summary |
 | 6 | 72 | p8_made_plateau_long_468 | 1 |  |  | 1.513966 | 0.000000 | 0.032413 | historical_tracked_summary |
-| 8 | 128 | p8_made_plateau_long_468 | 1 |  |  | 1.866652 | 0.000000 | 0.044885 | historical_tracked_summary |
+| 8 | 128 | p18_l8_ntrain400k | 8 | 1,2,3,4,5,6,7,8 | 400000 | 2.640582 | 0.132981 | 0.050881 | current_multi_seed_mean |
 | 10 | 200 | p9_largeL_ntrain200k | 8 | 1,2,3,4,5,6,7,8 | 200000 | 3.689559 | 0.265209 | 0.063953 | current_multi_seed_mean |
 | 12 | 288 | p9_largeL_ntrain200k | 8 | 1,2,3,4,5,6,7,8 | 200000 | 5.384724 | 0.321396 | 0.073780 | current_multi_seed_mean |
 | 14 | 392 | p17_l14_ntrain400k | 8 | 1,2,3,4,5,6,7,8 | 400000 | 6.074064 | 0.313907 | 0.088458 | current_multi_seed_mean |
@@ -47,8 +50,9 @@ The CSV keeps every recovered run-level aggregate so older candidates remain aud
 | 8 | l8_retrain_probe | 1 |  | 1.939175 | 0.000000 | 0.045612 | no | source file is deleted in working tree; value recovered from pre-cleanup tracked history |
 | 8 | p8_made_even | 1 |  | 2.772041 | 0.000000 | 0.067042 | no | source file is deleted in working tree; value recovered from pre-cleanup tracked history |
 | 8 | p8_made_plateau_even | 1 |  | 1.765041 | 0.000000 | 0.069670 | no | source file is deleted in working tree; value recovered from pre-cleanup tracked history |
-| 8 | p8_made_plateau_long_468 | 1 |  | 1.866652 | 0.000000 | 0.044885 | yes | recommended fit point; source file is deleted in working tree; value recovered from pre-cleanup tracked history |
+| 8 | p8_made_plateau_long_468 | 1 |  | 1.866652 | 0.000000 | 0.044885 | no | previous recommended fit point; source file is deleted in working tree; value recovered from pre-cleanup tracked history; superseded by p18_l8_ntrain400k 8-seed result |
 | 8 | p8_made_plateau_longmix_even | 1 |  | 1.866652 | 0.000000 | 0.044885 | no | source file is deleted in working tree; value recovered from pre-cleanup tracked history; duplicates long_468 values for L=4/6/8 and 40k_eval values for L=10/12 |
+| 8 | p18_l8_ntrain400k | 8 | 1,2,3,4,5,6,7,8 | 2.640582 | 0.132981 | 0.050881 | yes | recommended fit point; clean 8-seed L8 ntrain400k recheck with cv=0.050360; mean is substantially above previous historical L8 point |
 | 10 | p8_made_even | 1 |  | 0.986748 | 0.000000 | 0.079282 | no | source file is deleted in working tree; value recovered from pre-cleanup tracked history |
 | 10 | p8_made_plateau_40k_eval | 1 |  | 3.395239 | 0.000000 | 0.059515 | no | source file is deleted in working tree; value recovered from pre-cleanup tracked history |
 | 10 | p8_made_plateau_even | 1 |  | 3.377934 | 0.000000 | 0.082536 | no | source file is deleted in working tree; value recovered from pre-cleanup tracked history |
@@ -70,7 +74,10 @@ The CSV keeps every recovered run-level aggregate so older candidates remain aud
 
 ## Interpretation Notes
 
-- `L=4/6/8` recommended points are historical tracked summaries recovered from pre-cleanup tracked history after deleting heavy/obsolete run folders.
+- `L=4/6` recommended points are historical tracked summaries recovered from pre-cleanup tracked history after deleting heavy/obsolete run folders.
+- `L=8` recommended point is the 8-seed mean from `p18_l8_ntrain400k`; it
+  supersedes the previous historical single-point `p8_made_plateau_long_468`
+  value.
 - `L=10/12` recommended points are 8-seed means from `p9_largeL_ntrain200k`.
 - `L=14` recommended point is the 8-seed mean from `p17_l14_ntrain400k`.
 - `L=16` recommended point is the 8-seed mean from `p16_l16_ntrain400k`.

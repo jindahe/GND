@@ -25,7 +25,7 @@ historical single-point rows with zero train-seed spread.
 |---:|---:|---|---:|---:|---:|---:|---:|
 | 4 | 32 | `p8_made_plateau_long_468` | 1 |  | 1.074160 | 0.000000 | 0.021748 |
 | 6 | 72 | `p8_made_plateau_long_468` | 1 |  | 1.513966 | 0.000000 | 0.032413 |
-| 8 | 128 | `p8_made_plateau_long_468` | 1 |  | 1.866652 | 0.000000 | 0.044885 |
+| 8 | 128 | `p18_l8_ntrain400k` | 8 | 400000 | 2.640582 | 0.132981 | 0.050881 |
 | 10 | 200 | `p9_largeL_ntrain200k` | 8 | 200000 | 3.689559 | 0.265209 | 0.063953 |
 | 12 | 288 | `p9_largeL_ntrain200k` | 8 | 200000 | 5.384724 | 0.321396 | 0.073780 |
 | 14 | 392 | `p17_l14_ntrain400k` | 8 | 400000 | 6.074064 | 0.313907 | 0.088458 |
@@ -35,8 +35,8 @@ historical single-point rows with zero train-seed spread.
 
 | Window | Points | n_points | 2 alpha | alpha | beta | RSS |
 |---|---|---:|---:|---:|---:|---:|
-| all recommended | `L=4,6,8,10,12,14,16` | 7 | 0.603889 | 0.301944 | -2.076441 | 1.843343 |
-| bridge and large-L | `L=8,10,12,14,16` | 5 | 0.745959 | 0.372980 | -3.921712 | 0.396009 |
+| all recommended | `L=4,6,8,10,12,14,16` | 7 | 0.590068 | 0.295034 | -1.827678 | 0.960827 |
+| bridge and large-L | `L=8,10,12,14,16` | 5 | 0.668566 | 0.334283 | -2.838209 | 0.358050 |
 | current multi-seed large-L | `L=10,12,14,16` | 4 | 0.701132 | 0.350566 | -3.294127 | 0.315629 |
 | without L14 | `L=10,12,16` | 3 | 0.733107 | 0.366553 | -3.549929 | 0.029354 |
 | largest three | `L=12,14,16` | 3 | 0.687317 | 0.343658 | -3.091507 | 0.313085 |
@@ -68,81 +68,81 @@ windows in view.
 Fit window: `L=4,6,8,10,12,14,16`
 
 ```text
-2 alpha = 0.603888580
-alpha   = 0.301944290
-beta    = -2.076440982
-RSS     = 1.843342527
+2 alpha = 0.590068391
+alpha   = 0.295034196
+beta    = -1.827677591
+RSS     = 0.960826752
 ```
 
 Residuals:
 
 | L | observed MI | fitted MI | residual | seed_std | normalized residual |
 |---:|---:|---:|---:|---:|---:|
-| 4 | 1.074160 | 0.339113 | 0.735046 | 0.000000 | n/a |
-| 6 | 1.513966 | 1.546890 | -0.032925 | 0.000000 | n/a |
-| 8 | 1.866652 | 2.754668 | -0.888016 | 0.000000 | n/a |
-| 10 | 3.689559 | 3.962445 | -0.272886 | 0.265209 | -1.028945 |
-| 12 | 5.384724 | 5.170222 | 0.214502 | 0.321396 | 0.667406 |
-| 14 | 6.074064 | 6.377999 | -0.303935 | 0.313907 | -0.968235 |
-| 16 | 8.133990 | 7.585776 | 0.548214 | 0.382952 | 1.431548 |
+| 4 | 1.074160 | 0.532596 | 0.541564 | 0.000000 | n/a |
+| 6 | 1.513966 | 1.712733 | -0.198767 | 0.000000 | n/a |
+| 8 | 2.640582 | 2.892870 | -0.252287 | 0.132981 | -1.897173 |
+| 10 | 3.689559 | 4.073006 | -0.383447 | 0.265209 | -1.445830 |
+| 12 | 5.384724 | 5.253143 | 0.131581 | 0.321396 | 0.409403 |
+| 14 | 6.074064 | 6.433280 | -0.359216 | 0.313907 | -1.144340 |
+| 16 | 8.133990 | 7.613417 | 0.520574 | 0.382952 | 1.359371 |
 
 Leave-one-out sensitivity:
 
 | Omitted L | 2 alpha | alpha | beta | RSS | delta 2 alpha | delta beta |
 |---:|---:|---:|---:|---:|---:|---:|
-| 4 | 0.677393 | 0.338697 | -3.007500 | 0.834796 | 0.073505 | -0.931059 |
-| 6 | 0.602242 | 0.301121 | -2.053394 | 1.841825 | -0.001646 | 0.023047 |
-| 8 | 0.584584 | 0.292292 | -1.728956 | 0.883341 | -0.019305 | 0.347485 |
-| 10 | 0.603889 | 0.301944 | -2.030960 | 1.756465 | -0.000000 | 0.045481 |
-| 12 | 0.599226 | 0.299613 | -2.067115 | 1.787329 | -0.004663 | 0.009326 |
-| 14 | 0.619085 | 0.309543 | -2.167622 | 1.714015 | 0.015197 | -0.091181 |
-| 16 | 0.549067 | 0.274534 | -1.674417 | 1.282337 | -0.054821 | 0.402024 |
+| 4 | 0.644225 | 0.322112 | -2.513658 | 0.413350 | 0.054156 | -0.685981 |
+| 6 | 0.580130 | 0.290065 | -1.688541 | 0.905515 | -0.009938 | 0.139137 |
+| 8 | 0.584584 | 0.292292 | -1.728956 | 0.883341 | -0.005485 | 0.098721 |
+| 10 | 0.590068 | 0.295034 | -1.763770 | 0.789290 | -0.000000 | 0.063908 |
+| 12 | 0.587208 | 0.293604 | -1.821957 | 0.939750 | -0.002860 | 0.005721 |
+| 14 | 0.608029 | 0.304015 | -1.935442 | 0.780176 | 0.017961 | -0.107765 |
+| 16 | 0.538011 | 0.269006 | -1.445924 | 0.454966 | -0.052057 | 0.381754 |
 
 Interpretation:
 
-- The all-point fit is strongly influenced by finite-size curvature and by the
-  historical `L=4/6/8` points.
-- The largest normalized residual in the multi-seed subset is `L=16`
-  at `+1.431548` seed-std units.
-- The historical `L=8` point has a large raw residual, but no train-seed spread
-  is available for a normalized diagnostic.
+- The all-point fit is still influenced by finite-size curvature and by the
+  historical `L=4/6` points.
+- The largest normalized residual in the multi-seed subset is now `L=8`
+  at `-1.897173` seed-std units.
+- Replacing the historical `L=8` single point with the `p18` 8-seed mean
+  reduces the full-window RSS from the previous `1.843343` to `0.960827`.
 
 ### Bridge And Large-L
 
 Fit window: `L=8,10,12,14,16`
 
 ```text
-2 alpha = 0.745959103
-alpha   = 0.372979552
-beta    = -3.921711541
-RSS     = 0.396009203
+2 alpha = 0.668566048
+alpha   = 0.334283024
+beta    = -2.838208771
+RSS     = 0.358050016
 ```
 
 Residuals:
 
 | L | observed MI | fitted MI | residual | seed_std | normalized residual |
 |---:|---:|---:|---:|---:|---:|
-| 8 | 1.866652 | 2.045961 | -0.179310 | 0.000000 | n/a |
-| 10 | 3.689559 | 3.537879 | 0.151680 | 0.265209 | 0.571925 |
-| 12 | 5.384724 | 5.029798 | 0.354926 | 0.321396 | 1.104325 |
+| 8 | 2.640582 | 2.510320 | 0.130262 | 0.132981 | 0.979559 |
+| 10 | 3.689559 | 3.847452 | -0.157892 | 0.265209 | -0.595351 |
+| 12 | 5.384724 | 5.184584 | 0.200140 | 0.321396 | 0.622720 |
 | 14 | 6.074064 | 6.521716 | -0.447652 | 0.313907 | -1.426067 |
-| 16 | 8.133990 | 8.013634 | 0.120356 | 0.382952 | 0.314285 |
+| 16 | 8.133990 | 7.858848 | 0.275142 | 0.382952 | 0.718478 |
 
 Leave-one-out sensitivity:
 
 | Omitted L | 2 alpha | alpha | beta | RSS | delta 2 alpha | delta beta |
 |---:|---:|---:|---:|---:|---:|---:|
-| 8 | 0.701132 | 0.350566 | -3.294127 | 0.315629 | -0.044827 | 0.627584 |
-| 10 | 0.756793 | 0.378397 | -4.095060 | 0.363142 | 0.010834 | -0.173348 |
-| 12 | 0.745959 | 0.372980 | -4.010443 | 0.238544 | 0.000000 | -0.088731 |
-| 14 | 0.777934 | 0.388967 | -4.177513 | 0.109734 | 0.031975 | -0.255801 |
-| 16 | 0.715870 | 0.357935 | -3.620821 | 0.359795 | -0.030089 | 0.300890 |
+| 8 | 0.701132 | 0.350566 | -3.294127 | 0.315629 | 0.032566 | -0.455919 |
+| 10 | 0.657288 | 0.328644 | -2.657760 | 0.322436 | -0.011278 | 0.180449 |
+| 12 | 0.668566 | 0.334283 | -2.888244 | 0.307980 | 0.000000 | -0.050035 |
+| 14 | 0.700541 | 0.350271 | -3.094010 | 0.071775 | 0.031975 | -0.255801 |
+| 16 | 0.599780 | 0.299890 | -2.150353 | 0.168792 | -0.068786 | 0.687856 |
 
 Interpretation:
 
-- Removing `L=8` lowers the slope to the current multi-seed large-`L` value,
-  which shows that the historical bridge point still matters.
-- Removing `L=14` raises `2 alpha` by `0.031975` and reduces RSS to `0.109734`.
+- Removing `L=8` raises the slope to the current multi-seed large-`L` value,
+  so the rechecked bridge point now pulls the bridge-plus-large slope down.
+- Removing `L=14` raises `2 alpha` by `0.031975` and reduces RSS to `0.071775`.
 - The largest normalized residual is `L=14` at `-1.426067` seed-std units.
 
 ### Current Multi-Seed Large-L
@@ -261,12 +261,12 @@ Interpretation:
   `alpha = 0.350566` using `L=10,12,14,16`.
 - Excluding the low `L=14` point raises the multi-seed slope diagnostic to
   `2 alpha = 0.733107` and `alpha = 0.366553`.
-- Including the historical `L=8` bridge point gives a steeper bridge-plus-large
-  slope, `2 alpha = 0.745959`, but `L=8` has no train-seed uncertainty and
-  should be rechecked before it controls interpretation.
+- Including the rechecked `L=8` bridge point gives a lower bridge-plus-large
+  slope, `2 alpha = 0.668566`, than the `L>=10` multi-seed window. The
+  difference is now a real 8-seed diagnostic rather than a historical
+  single-point artifact.
 - The all-recommended fit is useful as a recorded full-curve summary, but the
   small historical sizes make it a poor standalone asymptotic estimate.
-- The next experiments should prioritize the planned `L=8, n_train=400k`
-  recheck and then an `L=18, n_train=400k` pilot. These two results directly
-  test the bridge point and the large-size extrapolation that currently limit
-  the fit.
+- The next experiment should prioritize an `L=18, n_train=400k` pilot. The
+  `L=8` bridge-point recheck is now complete, and the largest remaining gap is
+  anchoring the large-size extrapolation beyond `L=16`.

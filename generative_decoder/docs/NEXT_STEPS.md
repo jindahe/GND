@@ -3,6 +3,10 @@
 This document records the next execution plan after the current toric-code
 syndrome-only MI updates at `p = 0.05`.
 
+Update on 2026-06-04: the `L=8, n_train=400k` recheck has completed as
+`p18_l8_ntrain400k` with 8 train seeds and now supersedes the previous
+historical single-point `L=8` recommendation.
+
 The active fit target remains:
 
 ```text
@@ -18,7 +22,7 @@ Use `docs/MI_FIT_POINTS.csv` rows with
 |---:|---:|---|---:|---:|---:|---:|---:|---|
 | 4 | 32 | `p8_made_plateau_long_468` | 1 |  | 1.074160 | 0.000000 | 0.021748 | historical single point |
 | 6 | 72 | `p8_made_plateau_long_468` | 1 |  | 1.513966 | 0.000000 | 0.032413 | historical single point |
-| 8 | 128 | `p8_made_plateau_long_468` | 1 |  | 1.866652 | 0.000000 | 0.044885 | historical single point |
+| 8 | 128 | `p18_l8_ntrain400k` | 8 | 400000 | 2.640582 | 0.132981 | 0.050881 | current multi-seed mean |
 | 10 | 200 | `p9_largeL_ntrain200k` | 8 | 200000 | 3.689559 | 0.265209 | 0.063953 | current multi-seed mean |
 | 12 | 288 | `p9_largeL_ntrain200k` | 8 | 200000 | 5.384724 | 0.321396 | 0.073780 | current multi-seed mean |
 | 14 | 392 | `p17_l14_ntrain400k` | 8 | 400000 | 6.074064 | 0.313907 | 0.088458 | current multi-seed mean |
@@ -26,17 +30,20 @@ Use `docs/MI_FIT_POINTS.csv` rows with
 
 Current strengths:
 
-- The large-`L` range now includes `L=10,12,14,16`.
+- The bridge and large-`L` range now includes `L=8,10,12,14,16` with a
+  multi-seed `L=8` recheck.
 - `L=14` is no longer missing and has an 8-seed result.
 - `L=16` has a cleaner 8-seed `n_train=400k` result than the previous
   `p12_l16_ntrain300k` reference.
-- For `L=10/12/14/16`, train-seed spread is the main numerical uncertainty,
+- For `L=8/10/12/14/16`, train-seed spread is the main numerical uncertainty,
   not MI bootstrap noise.
 
 Current weaknesses:
 
-- `L=4/6/8` are historical single-point results and do not have train-seed
+- `L=4/6` are historical single-point results and do not have train-seed
   uncertainty.
+- The rechecked `L=8` mean is substantially above the previous historical
+  `L=8` point, so bridge-window fits changed materially.
 - `L=14` is statistically usable after extension to 8 seeds, but its mean sits
   below the simple interpolation between the current `L=12` and `L=16` points.
 - The largest completed size is still `L=16`, so the asymptotic region is not
@@ -46,6 +53,8 @@ Current weaknesses:
 ## Immediate Priority
 
 ### P0. Freeze The Current Record
+
+Status: completed in commit `6e10950`.
 
 Before launching more experiments, commit the current lightweight records so
 future generated artifacts cannot obscure the present state.
@@ -73,6 +82,8 @@ Rationale:
 - The CSV and Markdown files are the auditable source for current conclusions.
 
 ### P1. Generate A Formal Fit Analysis
+
+Status: completed in commit `d37766a`, then updated after the `L=8` recheck.
 
 Create a dedicated fit-analysis document:
 
@@ -105,12 +116,12 @@ normalized residuals, when seed_std is available
 leave-one-out sensitivity
 ```
 
-Current unweighted OLS reference values:
+Current unweighted OLS reference values after the `L=8` recheck:
 
 | Window | n_points | 2 alpha | alpha | beta | RSS |
 |---|---:|---:|---:|---:|---:|
-| all recommended, `L=4..16` | 7 | 0.603889 | 0.301944 | -2.076441 | 1.843343 |
-| `L>=8` | 5 | 0.745959 | 0.372980 | -3.921712 | 0.396009 |
+| all recommended, `L=4..16` | 7 | 0.590068 | 0.295034 | -1.827678 | 0.960827 |
+| `L>=8` | 5 | 0.668566 | 0.334283 | -2.838209 | 0.358050 |
 | `L>=10` | 4 | 0.701132 | 0.350566 | -3.294127 | 0.315629 |
 | `L>=12` | 3 | 0.687317 | 0.343658 | -3.091507 | 0.313085 |
 
@@ -135,8 +146,28 @@ Interpretation requirement:
 
 ### P2. Recheck `L=8`
 
-`L=8` is currently the weakest bridge point because it is a historical
-single-point result and has no train-seed spread.
+Status: completed as `p18_l8_ntrain400k`.
+
+Final 8-seed aggregate:
+
+```text
+mean(MI) = 2.640582
+seed_std = 0.132981
+cv = 0.050360
+mean bootstrap std = 0.050881
+min/max = 2.487810 / 2.808210
+```
+
+Decision:
+
+- The mean differs substantially from the historical `L=8` point.
+- The run was extended from seeds `1..3` to seeds `4..8`.
+- The final result is below the `cv <= 0.06` usable-baseline gate.
+- `docs/MI_FIT_POINTS.csv`, `docs/MI_FIT_SUMMARY.md`, and
+  `docs/MI_FIT_ANALYSIS.md` were updated to make `p18_l8_ntrain400k` the
+  recommended `L=8` point.
+
+The original pilot configuration was:
 
 Recommended pilot:
 
@@ -170,7 +201,7 @@ env BASE_ROOT=net/mi_scaling/p18_l8_ntrain400k \
   scripts/run_p16_l16_ntrain400k.sh
 ```
 
-Decision gates after seeds `1..3`:
+Historical decision gates after seeds `1..3`:
 
 - If `cv <= 0.06` and the mean is close to the historical `L=8` point, decide
   whether an 8-seed extension is necessary.
@@ -181,7 +212,9 @@ Decision gates after seeds `1..3`:
 
 ### P3. Start An `L=18` Pilot
 
-After the fit analysis and `L=8` pilot are understood, begin probing a larger
+Status: next active experiment.
+
+After the fit analysis and completed `L=8` recheck, begin probing a larger
 size. The current largest completed size is `L=16`, so `L=18` is the next
 natural test of the large-`L` trend.
 
@@ -271,6 +304,7 @@ Current status:
 
 | L | status |
 |---:|---|
+| 8 | usable 8-seed baseline, new bridge point above historical L8 |
 | 10 | usable 8-seed baseline |
 | 12 | usable 8-seed baseline |
 | 14 | usable 8-seed baseline, but low relative to L12-L16 interpolation |
@@ -278,10 +312,11 @@ Current status:
 
 ## Recommended Execution Order
 
-1. Commit the current lightweight records.
-2. Create `docs/MI_FIT_ANALYSIS.md`.
-3. Run `L=8, n_train=400k, seeds=1..3`.
-4. Decide whether to extend `L=8` to seeds `4..8`.
+1. Commit the current lightweight records. Completed.
+2. Create `docs/MI_FIT_ANALYSIS.md`. Completed.
+3. Run `L=8, n_train=400k, seeds=1..3`. Completed.
+4. Decide whether to extend `L=8` to seeds `4..8`. Completed; extended and
+   finished.
 5. Start `L=18, n_train=400k, seeds=1..3`.
 6. Decide whether to extend `L=18` to seeds `4..8`.
 7. Rerun `L=10/12` at `400k` only if the fit analysis or `L=8/L18` results
