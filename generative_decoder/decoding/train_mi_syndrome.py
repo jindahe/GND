@@ -1,5 +1,7 @@
 import random
 import sys
+import hashlib
+import json
 from pathlib import Path
 
 import numpy as np
@@ -112,6 +114,11 @@ def build_checkpoint_payload(model, build_meta, n_bits, model_param_count, datas
             "batch": args.batch,
             "lr": args.lr,
             "weight_decay": args.weight_decay,
+            "optimizer": "AdamW" if args.weight_decay > 0 else "Adam",
+            "grad_clip_norm": args.grad_clip_norm,
+            "warmup_steps": args.warmup_steps,
+            "divergence_nll_threshold": args.divergence_nll_threshold,
+            "max_train_steps": args.max_train_steps,
             "lr_decay_factor": args.lr_decay_factor,
             "lr_decay_patience": args.lr_decay_patience,
             "min_lr": args.min_lr,
@@ -124,6 +131,46 @@ def build_checkpoint_payload(model, build_meta, n_bits, model_param_count, datas
         "partition": data["partition"],
         "applied_order": data["applied_order"],
         "history": history,
+    }
+
+
+def sequence_summary(values):
+    if values is None:
+        return None
+    encoded = json.dumps(values, separators=(",", ":")).encode("utf-8")
+    return {
+        "length": len(values),
+        "sha256": hashlib.sha256(encoded).hexdigest(),
+    }
+
+
+def partition_summary(partition):
+    if partition is None:
+        return None
+    return {
+        "axis": partition["axis"],
+        "cut": partition["cut"],
+        "len_A": len(partition["idx_A"]),
+        "len_B": len(partition["idx_B"]),
+        "n_coords": len(partition.get("coords", [])),
+        "idx_A": sequence_summary(partition["idx_A"]),
+        "idx_B": sequence_summary(partition["idx_B"]),
+        "order_AB": sequence_summary(partition["order_AB"]),
+        "order_BA": sequence_summary(partition["order_BA"]),
+    }
+
+
+def build_dataset_record(dataset_path, data, train, val, test):
+    return {
+        "path": str(dataset_path),
+        "meta": data["meta"],
+        "partition_summary": partition_summary(data["partition"]),
+        "applied_order_summary": sequence_summary(data["applied_order"]),
+        "shape": {
+            "train": list(train.shape),
+            "val": list(val.shape),
+            "test": list(test.shape),
+        },
     }
 
 
@@ -209,6 +256,46 @@ def evaluate_nll(model, loader, device, dtype):
     return total_nll / total_examples
 
 
+def current_lr(optimizer):
+    return optimizer.param_groups[0]["lr"]
+
+
+def set_optimizer_lr(optimizer, lr):
+    for group in optimizer.param_groups:
+        group["lr"] = lr
+
+
+def apply_warmup_lr(optimizer, global_step, warmup_steps=None, base_lr=None):
+    warmup_steps = args.warmup_steps if warmup_steps is None else warmup_steps
+    base_lr = args.lr if base_lr is None else base_lr
+    if warmup_steps <= 0:
+        return current_lr(optimizer)
+    if global_step > warmup_steps:
+        return current_lr(optimizer)
+    scale = float(global_step) / float(warmup_steps)
+    lr = base_lr * scale
+    set_optimizer_lr(optimizer, lr)
+    return lr
+
+
+def compute_grad_norm(parameters):
+    grads = [parameter.grad.detach() for parameter in parameters if parameter.grad is not None]
+    if not grads:
+        return 0.0
+    norms = [torch.linalg.vector_norm(grad, ord=2) for grad in grads]
+    return torch.linalg.vector_norm(torch.stack(norms), ord=2).item()
+
+
+def check_nll_divergence(train_nll, val_nll):
+    metrics = {"train_nll": train_nll, "val_nll": val_nll}
+    for metric_name, metric_value in metrics.items():
+        if not np.isfinite(metric_value):
+            return metric_name, metric_value, "non_finite"
+        if args.divergence_nll_threshold > 0 and metric_value > args.divergence_nll_threshold:
+            return metric_name, metric_value, "threshold"
+    return None, None, None
+
+
 def main():
     started_at = utc_timestamp()
     dtype = get_dtype()
@@ -233,6 +320,8 @@ def main():
     model, build_meta = build_model(n_bits=n_bits, device=device, dtype=dtype)
     optimizer_cls = torch.optim.AdamW if args.weight_decay > 0 else torch.optim.Adam
     optimizer = optimizer_cls(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    if args.warmup_steps > 0:
+        set_optimizer_lr(optimizer, 0.0)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
         mode="min",
@@ -249,13 +338,33 @@ def main():
         "best_val_nll": None,
         "best_epoch": None,
         "epochs_trained": 0,
+        "optimizer_steps": 0,
+        "lr": [],
+        "grad_norm_mean": [],
+        "grad_norm_max": [],
+    }
+    divergence_state = {
+        "objective_training_failure": False,
+        "reason": None,
+        "metric": None,
+        "value": None,
+        "threshold": args.divergence_nll_threshold if args.divergence_nll_threshold > 0 else None,
+        "epoch": None,
+        "step": None,
     }
     best_state_dict = None
     epochs_without_improvement = 0
+    global_step = 0
+    stop_training = False
     print(f"dataset: {dataset_path}")
     print(f"device: {device}")
     print(f"train_seed: {args.train_seed}")
     print(f"train/val/test: {tuple(train.shape)} {tuple(val.shape)} {tuple(test.shape)}")
+    print(
+        f"optimizer: {optimizer_cls.__name__} lr={args.lr} weight_decay={args.weight_decay} "
+        f"grad_clip_norm={args.grad_clip_norm} warmup_steps={args.warmup_steps} "
+        f"divergence_nll_threshold={args.divergence_nll_threshold} max_train_steps={args.max_train_steps}"
+    )
     if args.n_type == "made":
         print(
             f"made_config: depth={args.depth} requested_width={args.width} "
@@ -267,25 +376,87 @@ def main():
         model.train()
         epoch_nll = 0.0
         seen = 0
+        epoch_grad_norms = []
 
         for (batch,) in train_loader:
+            if args.max_train_steps > 0 and global_step >= args.max_train_steps:
+                stop_training = True
+                break
+
             batch = batch.to(device=device, dtype=dtype)
             nll = -model_log_prob(model, batch)
             loss = nll.mean()
 
+            if not torch.isfinite(loss):
+                divergence_state.update(
+                    {
+                        "objective_training_failure": True,
+                        "reason": "non_finite_loss",
+                        "metric": "loss",
+                        "value": float(loss.detach().cpu().item()),
+                        "epoch": epoch + 1,
+                        "step": global_step + 1,
+                    }
+                )
+                stop_training = True
+                break
+
+            global_step += 1
+            apply_warmup_lr(optimizer, global_step)
             optimizer.zero_grad()
             loss.backward()
+            parameters = [parameter for parameter in model.parameters() if parameter.requires_grad]
+            if args.grad_clip_norm > 0:
+                grad_norm = torch.nn.utils.clip_grad_norm_(parameters, args.grad_clip_norm).item()
+            else:
+                grad_norm = compute_grad_norm(parameters)
+            if not np.isfinite(grad_norm):
+                divergence_state.update(
+                    {
+                        "objective_training_failure": True,
+                        "reason": "non_finite_grad_norm",
+                        "metric": "grad_norm",
+                        "value": grad_norm,
+                        "epoch": epoch + 1,
+                        "step": global_step,
+                    }
+                )
+                stop_training = True
+                break
             optimizer.step()
 
             epoch_nll += nll.sum().item()
             seen += batch.size(0)
+            epoch_grad_norms.append(grad_norm)
+
+        if seen == 0:
+            break
 
         train_nll = epoch_nll / seen
         val_nll = evaluate_nll(model, val_loader, device=device, dtype=dtype)
-        scheduler.step(val_nll)
+        if args.warmup_steps <= 0 or global_step >= args.warmup_steps:
+            scheduler.step(val_nll)
         history["train_nll"].append(train_nll)
         history["val_nll"].append(val_nll)
         history["epochs_trained"] = epoch + 1
+        history["optimizer_steps"] = global_step
+        history["lr"].append(current_lr(optimizer))
+        history["grad_norm_mean"].append(float(np.mean(epoch_grad_norms)) if epoch_grad_norms else None)
+        history["grad_norm_max"].append(float(np.max(epoch_grad_norms)) if epoch_grad_norms else None)
+
+        metric_name, metric_value, reason = check_nll_divergence(train_nll, val_nll)
+        if reason is not None:
+            divergence_state.update(
+                {
+                    "objective_training_failure": True,
+                    "reason": reason,
+                    "metric": metric_name,
+                    "value": metric_value,
+                    "epoch": epoch + 1,
+                    "step": global_step,
+                }
+            )
+            stop_training = True
 
         improved = history["best_val_nll"] is None or val_nll < (
             history["best_val_nll"] - args.early_stop_min_delta
@@ -303,8 +474,24 @@ def main():
                 f"epoch={epoch + 1} "
                 f"train_nll={train_nll:.6f} "
                 f"val_nll={val_nll:.6f} "
-                f"lr={optimizer.state_dict()['param_groups'][0]['lr']:.6g}"
+                f"lr={current_lr(optimizer):.6g} "
+                f"grad_norm_mean={history['grad_norm_mean'][-1]:.6f} "
+                f"grad_norm_max={history['grad_norm_max'][-1]:.6f} "
+                f"steps={global_step}"
             )
+
+        if stop_training:
+            if args.max_train_steps > 0 and global_step >= args.max_train_steps and not divergence_state[
+                "objective_training_failure"
+            ]:
+                print(f"max_train_steps: step={global_step}")
+            elif divergence_state["objective_training_failure"]:
+                print(
+                    f"objective_training_failure: reason={divergence_state['reason']} "
+                    f"metric={divergence_state['metric']} value={divergence_state['value']} "
+                    f"epoch={divergence_state['epoch']} step={divergence_state['step']}"
+                )
+            break
 
         if args.early_stop_patience > 0 and epochs_without_improvement >= args.early_stop_patience:
             print(
@@ -317,9 +504,10 @@ def main():
     if best_state_dict is not None:
         model.load_state_dict(best_state_dict)
 
-    history["test_nll"] = evaluate_nll(model, test_loader, device=device, dtype=dtype)
-    print(f"best_epoch={history['best_epoch']} best_val_nll={history['best_val_nll']:.6f}")
-    print(f"test_nll={history['test_nll']:.6f}")
+    if best_state_dict is not None:
+        history["test_nll"] = evaluate_nll(model, test_loader, device=device, dtype=dtype)
+    print(f"best_epoch={history['best_epoch']} best_val_nll={history['best_val_nll']}")
+    print(f"test_nll={history['test_nll']}")
 
     checkpoint_path = resolve_checkpoint_path()
     record_path = resolve_record_path(checkpoint_path)
@@ -339,7 +527,7 @@ def main():
 
     record = {
         "record_type": "syndrome_training",
-        "schema_version": 1,
+        "schema_version": 2,
         "started_at_utc": started_at,
         "finished_at_utc": utc_timestamp(),
         "script": "decoding/train_mi_syndrome.py",
@@ -375,6 +563,11 @@ def main():
             "batch": args.batch,
             "lr": args.lr,
             "weight_decay": args.weight_decay,
+            "optimizer": "AdamW" if args.weight_decay > 0 else "Adam",
+            "grad_clip_norm": args.grad_clip_norm,
+            "warmup_steps": args.warmup_steps,
+            "divergence_nll_threshold": args.divergence_nll_threshold,
+            "max_train_steps": args.max_train_steps,
             "lr_decay_factor": args.lr_decay_factor,
             "lr_decay_patience": args.lr_decay_patience,
             "min_lr": args.min_lr,
@@ -382,17 +575,7 @@ def main():
             "early_stop_patience": args.early_stop_patience,
             "early_stop_min_delta": args.early_stop_min_delta,
         },
-        "dataset": {
-            "path": str(dataset_path),
-            "meta": data["meta"],
-            "partition": data["partition"],
-            "applied_order": data["applied_order"],
-            "shape": {
-                "train": list(train.shape),
-                "val": list(val.shape),
-                "test": list(test.shape),
-            },
-        },
+        "dataset": build_dataset_record(dataset_path, data, train, val, test),
         "metrics": {
             "best_epoch": history["best_epoch"],
             "best_val_nll": history["best_val_nll"],
@@ -400,7 +583,12 @@ def main():
             "epochs_trained": history["epochs_trained"],
             "train_nll_history": history["train_nll"],
             "val_nll_history": history["val_nll"],
+            "lr_history": history["lr"],
+            "grad_norm_mean_history": history["grad_norm_mean"],
+            "grad_norm_max_history": history["grad_norm_max"],
+            "optimizer_steps": history["optimizer_steps"],
         },
+        "divergence": divergence_state,
         "artifacts": {
             "checkpoint_path": str(checkpoint_path) if args.save else None,
         },

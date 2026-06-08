@@ -129,6 +129,14 @@ par_common.add_argument('-lr', type=float, default=0.001,
         help='learning rate, default: %(default)s')
 par_common.add_argument('-weight_decay', type=float, default=0.0,
         help='weight decay used by Adam/AdamW optimizers, default: %(default)s')
+par_common.add_argument('-grad_clip_norm', type=float, default=0.0,
+        help='clip gradient norm to this value when positive, default: %(default)s')
+par_common.add_argument('-warmup_steps', type=int, default=0,
+        help='number of optimizer steps used for linear LR warmup, default: %(default)d')
+par_common.add_argument('-divergence_nll_threshold', type=float, default=0.0,
+        help='stop and flag objective failure if train/val NLL exceeds this positive threshold, default: %(default)s')
+par_common.add_argument('-max_train_steps', type=int, default=0,
+        help='optional maximum optimizer steps; set <=0 to disable, default: %(default)d')
 par_common.add_argument('-lr_decay_factor', type=float, default=0.5,
         help='factor used by validation-plateau LR decay, default: %(default)s')
 par_common.add_argument('-lr_decay_patience', type=int, default=5,

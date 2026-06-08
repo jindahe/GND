@@ -3,6 +3,16 @@ __pycache__/
 **/__pycache__/
 *.pyc
 logs/
+
+# Local agent/plugin state
+.agents/
+skills-lock.json
+
+# Generated documentation plots and stale fit exports
+docs/*.png
+docs/*.pdf
+docs/MI_FIT_ALL_RECOMMENDED_FIT_LGE10.csv
+docs/MI_FIT_ALL_RECOMMENDED_FIT_LGE10.json
 net/code_capacity/*.pt
 net/**/*.pt
 net/**/*.pth

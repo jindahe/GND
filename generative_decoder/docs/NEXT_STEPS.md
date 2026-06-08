@@ -1,16 +1,13 @@
-# Next Steps For Syndrome-Only MI Scaling
+# Next Steps For Current Syndrome-Only MI Training
 
-This document records the next execution plan after the current toric-code
-syndrome-only MI updates at `p = 0.05`.
+This document records only the current unfinished plan. Completed run details
+belong in `docs/agent_outputs/scaling_runs/`, seed policy belongs in
+`docs/SEED_POLICY.md`, and fit records belong in `docs/MI_FIT_POINTS.csv`,
+`docs/MI_FIT_SUMMARY.md`, and `docs/MI_FIT_ANALYSIS.md`.
 
-Update on 2026-06-04: the `L=8, n_train=400k` recheck has completed as
-`p18_l8_ntrain400k` with 8 train seeds and now supersedes the previous
-historical single-point `L=8` recommendation.
-
-Second update on 2026-06-04: the `L=18, n_train=400k` pilot has completed as
-`p19_l18_ntrain400k_pilot` with 8 train seeds. It is now recorded as a
-provisional recommended largest-size point, but its cv is at the usable-baseline
-gate and seed 5 has abnormal training/MI diagnostics.
+Do not use this file as a run-history archive. When a run completes, move the
+run-specific conclusion into a report and leave here only the next unfinished
+decision.
 
 The active fit target remains:
 
@@ -18,355 +15,301 @@ The active fit target remains:
 I(L) = 2 alpha(p) L + beta(p) + o(1), p = 0.05
 ```
 
-Use `docs/MI_FIT_POINTS.csv` rows with
-`include_in_recommended_fit=yes` as the current recommended fit inputs.
+The current recommended fit inputs are the rows in `docs/MI_FIT_POINTS.csv`
+with `include_in_recommended_fit=yes`. Diagnostic rows must not be silently
+substituted into the recommended fit.
 
-## Current Recommended Data
+## Current Fit State
 
-| L | n | run_id | seeds | n_train | MI | seed_std | mean_bootstrap_std | status |
-|---:|---:|---|---:|---:|---:|---:|---:|---|
-| 4 | 32 | `p8_made_plateau_long_468` | 1 |  | 1.074160 | 0.000000 | 0.021748 | historical single point |
-| 6 | 72 | `p8_made_plateau_long_468` | 1 |  | 1.513966 | 0.000000 | 0.032413 | historical single point |
-| 8 | 128 | `p18_l8_ntrain400k` | 8 | 400000 | 2.640582 | 0.132981 | 0.050881 | current multi-seed mean |
-| 10 | 200 | `p9_largeL_ntrain200k` | 8 | 200000 | 3.689559 | 0.265209 | 0.063953 | current multi-seed mean |
-| 12 | 288 | `p9_largeL_ntrain200k` | 8 | 200000 | 5.384724 | 0.321396 | 0.073780 | current multi-seed mean |
-| 14 | 392 | `p17_l14_ntrain400k` | 8 | 400000 | 6.074064 | 0.313907 | 0.088458 | current multi-seed mean |
-| 16 | 512 | `p16_l16_ntrain400k` | 8 | 400000 | 8.133990 | 0.382952 | 0.094499 | current multi-seed mean |
-| 18 | 648 | `p19_l18_ntrain400k_pilot` | 8 | 400000 | 9.573411 | 0.574411 | 0.104420 | provisional multi-seed mean |
+Recommended fit points:
 
-Current strengths:
+| L | n | run_id | seeds | n_train | MI | seed_std | status |
+|---:|---:|---|---:|---:|---:|---:|---|
+| 4 | 32 | `p8_made_plateau_long_468` | 1 |  | 1.074160 | 0.000000 | historical single point |
+| 6 | 72 | `p8_made_plateau_long_468` | 1 |  | 1.513966 | 0.000000 | historical single point |
+| 8 | 128 | `p18_l8_ntrain400k` | 8 | 400000 | 2.640582 | 0.132981 | usable baseline |
+| 10 | 200 | `p26_l10_l12_made_depth0_width64_ntrain400k` | 8 | 400000 | 3.557084 | 0.190860 | usable baseline |
+| 12 | 288 | `p26_l10_l12_made_depth0_width64_ntrain400k` | 8 | 400000 | 4.921827 | 0.210903 | usable baseline |
+| 14 | 392 | `p17_l14_ntrain400k` | 8 | 400000 | 6.074064 | 0.313907 | usable; p27 confirms low position |
+| 16 | 512 | `p16_l16_ntrain400k` | 8 | 400000 | 8.133990 | 0.382952 | usable baseline |
+| 18 | 648 | `p19_l18_ntrain400k_pilot` | 8 | 400000 | 9.573411 | 0.574411 | provisional endpoint row |
 
-- The bridge and large-`L` range now includes `L=8,10,12,14,16,18` with a
-  multi-seed `L=8` recheck.
-- The largest completed size is now `L=18`.
-- `L=14` is no longer missing and has an 8-seed result.
-- `L=16` has a cleaner 8-seed `n_train=400k` result than the previous
-  `p12_l16_ntrain300k` reference.
-- For `L=8/10/12/14/16`, train-seed spread is the main numerical uncertainty,
-  not MI bootstrap noise.
+Endpoint reporting until the next policy change:
 
-Current weaknesses:
+- Current endpoint-included window:
+  `L=10,12,14,16,18`, `2 alpha = 0.762241`, `alpha = 0.381120`.
+- Endpoint-stable comparison window:
+  `L=10,12,14,16`, `2 alpha = 0.744148`, `alpha = 0.372074`.
+- State that `L=18` is provisional whenever quoting endpoint-included fits.
+- Keep p32 fixed-LR `L=18` as diagnostic until a same-protocol anchor is
+  completed and promoted by policy.
 
-- `L=4/6` are historical single-point results and do not have train-seed
-  uncertainty.
-- The rechecked `L=8` mean is substantially above the previous historical
-  `L=8` point, so bridge-window fits changed materially.
-- `L=14` is statistically usable after extension to 8 seeds, but its mean sits
-  below the simple interpolation between the current `L=12` and `L=16` points.
-- `L=18` is only a provisional largest-size point: cv=`0.060001`, seed 5 has
-  abnormal `BA` training diagnostics, and seeds 5/7 are high-MI points.
-- `L=10/12` use `n_train=200k`, while `L=14/16` use `n_train=400k`.
+## Protocol Policy
 
-## Immediate Priority
-
-### P0. Freeze The Current Record
-
-Status: completed in commit `6e10950`.
-
-Before launching more experiments, commit the current lightweight records so
-future generated artifacts cannot obscure the present state.
-
-Expected tracked changes:
+Current protocol labels:
 
 ```text
-docs/MI_FIT_POINTS.csv
-docs/MI_FIT_SUMMARY.md
-docs/agent_outputs/scaling_runs/2026-06-03_p16_l16_ntrain400k_a100.md
-docs/agent_outputs/scaling_runs/2026-06-03_p17_l14_ntrain400k_pilot.md
-docs/NEXT_STEPS.md
+v1 historical active protocol:
+  MADE depth=0,width=64; n_train=400000; batch=512; lr=0.001;
+  no warmup; no grad clip; no weight decay; lr_decay_patience=5;
+  min_lr=0.0001; early_stop_patience=30.
+
+v2 fixed-LR candidate protocol:
+  MADE depth=0,width=64; n_train=400000; batch=1024; lr=0.0005;
+  AdamW weight_decay=0.00001; grad_clip_norm=1.0; warmup_steps=1000;
+  lr_decay_patience=3; min_lr=0.00001; early_stop_patience=20;
+  early_stop_min_delta=0.01; epoch=80.
+
+v3 MADE quality-scaling mainline, design only:
+  MADE depth=0,width=64; AdamW lr=0.0005; weight_decay=0.00001;
+  grad_clip_norm=1.0; batch=1024; data size and stopping rules are fixed
+  functions of n=2L^2 rather than hand-tuned per L.
 ```
 
-Suggested commit message:
+Protocol-fixed rule:
+
+- Compare MI across `L` only within a fixed protocol track.
+- If optimizer, batch, learning rate, warmup, clipping, scheduler, data size,
+  architecture, or evaluation settings change, record the result as a
+  diagnostic row under a new protocol track until promoted by an explicit
+  endpoint or scaling-subset policy.
+- Do not replace one `L` in the recommended fit with a different-protocol
+  result while leaving neighboring `L` values on the old protocol.
+- For fixed-`L` multiple MI values, prefer the current recommended-protocol
+  clean 8-seed aggregate. Keep clean high-MI and low-MI seeds; exclude only
+  objective saved-JSON training failures according to `docs/SEED_POLICY.md`.
+- Use bootstrap std to judge MI evaluation noise, but choose protocol results
+  primarily by objective training health, held-out NLL consistency,
+  entropy-decomposition stability, and train-seed spread.
+
+## Persistent MADE Quality-Scaling Design
+
+Keep this section in `docs/NEXT_STEPS.md` until it is either promoted into a
+dedicated protocol document or explicitly retired. Do not delete it merely
+because one immediate p33/p32 decision completes.
+
+Protocol id:
 
 ```text
-Record L14 and updated L16 MI scaling results
+v3_made_quality_scaling
 ```
 
-Rationale:
+Purpose:
 
-- Heavy datasets, checkpoints, result JSON files, and plots under `net/` are
-  intentionally outside the lightweight GitHub record.
-- The CSV and Markdown files are the auditable source for current conclusions.
+Define a MADE-only training-quality mainline that can be extended to larger
+`L` without ad hoc per-size tuning. This protocol ignores parameter-count
+practicality for now and focuses on whether each `q_theta` is trained to a
+comparable held-out quality under one predeclared rule set.
 
-### P1. Generate A Formal Fit Analysis
-
-Status: completed in commit `d37766a`, then updated after the `L=8` recheck.
-
-Create a dedicated fit-analysis document:
+Fixed architecture and optimizer:
 
 ```text
-docs/MI_FIT_ANALYSIS.md
-```
-
-The analysis should not only report a single line fit. It should compare fit
-windows and sensitivity to specific points.
-
-Minimum fit windows:
-
-| Window | Points | Purpose |
-|---|---|---|
-| all recommended | `L=4,6,8,10,12,14,16` | Full recorded curve |
-| bridge and large-L | `L=8,10,12,14,16` | Reduces small-size influence |
-| current multi-seed large-L | `L=10,12,14,16` | Uses the best current multi-seed range |
-| without L14 | `L=10,12,16` | Measures sensitivity to low `L=14` |
-| largest three | `L=12,14,16` | Checks local large-size curvature |
-
-For each window, report:
-
-```text
-2 alpha
-alpha
-beta
-RSS
-per-point residuals
-normalized residuals, when seed_std is available
-leave-one-out sensitivity
-```
-
-Current unweighted OLS reference values after the `L=8` recheck:
-
-| Window | n_points | 2 alpha | alpha | beta | RSS |
-|---|---:|---:|---:|---:|---:|
-| all recommended, `L=4..16` | 7 | 0.590068 | 0.295034 | -1.827678 | 0.960827 |
-| `L>=8` | 5 | 0.668566 | 0.334283 | -2.838209 | 0.358050 |
-| `L>=10` | 4 | 0.701132 | 0.350566 | -3.294127 | 0.315629 |
-| `L>=12` | 3 | 0.687317 | 0.343658 | -3.091507 | 0.313085 |
-
-Specific diagnostic for `L=14`:
-
-```text
-L12 recommended MI = 5.384724
-L16 recommended MI = 8.133990
-linear interpolation at L14 = 6.759357
-observed L14 mean = 6.074064
-delta = -0.685293
-L14 seed_std = 0.313907
-```
-
-Interpretation requirement:
-
-- Do not hide the low relative position of `L=14`.
-- Do not drop `L=14` silently.
-- Report both with-`L14` and without-`L14` windows.
-
-## Experiment Priorities
-
-### P2. Recheck `L=8`
-
-Status: completed as `p18_l8_ntrain400k`.
-
-Final 8-seed aggregate:
-
-```text
-mean(MI) = 2.640582
-seed_std = 0.132981
-cv = 0.050360
-mean bootstrap std = 0.050881
-min/max = 2.487810 / 2.808210
-```
-
-Decision:
-
-- The mean differs substantially from the historical `L=8` point.
-- The run was extended from seeds `1..3` to seeds `4..8`.
-- The final result is below the `cv <= 0.06` usable-baseline gate.
-- `docs/MI_FIT_POINTS.csv`, `docs/MI_FIT_SUMMARY.md`, and
-  `docs/MI_FIT_ANALYSIS.md` were updated to make `p18_l8_ntrain400k` the
-  recommended `L=8` point.
-
-The original pilot configuration was:
-
-Recommended pilot:
-
-```text
-run_id: p18_l8_ntrain400k
-L: 8
-n: 128
 model: MADE
-p: 0.05
-partition: x-mid
-n_train: 400000
-n_val: 2000
-n_test: 2000
-train_seeds: 1,2,3
-batch: 512
-lr: 1e-3
+depth: 0
+width: 64
+activation: tanh
+residual: false
+optimizer: AdamW
+lr: 0.0005
+weight_decay: 0.00001
+grad_clip_norm: 1.0
+batch: 1024
 lr_decay_factor: 0.5
 lr_decay_patience: 5
-min_lr: 1e-4
+min_lr: 0.000005
 early_stop_patience: 30
-mi_samples: 40000
+divergence_nll_threshold: 1000
+dtype: float32
+partition: x-mid
+p: 0.05
+error_model: dep
+code_seed: 0
+error_seed: 51697
+split_seed: 0
 bootstrap_samples: 200
 ```
 
-Suggested command:
+Size-dependent rules:
+
+```text
+n = 2 L^2
+n_train(L) = max(400000, ceil(800 * n))
+n_val(L) = max(5000, ceil(10 * n))
+n_test(L) = max(5000, ceil(10 * n))
+pilot_max_optimizer_steps = 80000
+formal_max_optimizer_steps = 160000
+warmup_steps = min(5000, max(1000, ceil(0.05 * max_optimizer_steps)))
+early_stop_min_delta = 0.00001 * n
+epoch = ceil(max_optimizer_steps * batch / n_train(L))
+```
+
+Seed policy for v3:
+
+```text
+pilot seeds: 1,2,3,5
+formal seeds: 1,2,3,4,5,6,7,8
+stability extension: 9,10,11,12,13,14,15,16 only if a predeclared gate
+  triggers, such as clean 8-seed cv in (0.06, 0.08].
+```
+
+Required v3 reporting:
+
+- Report total and per-token `best_val_nll` and `test_nll` for AB and BA.
+- Report per-token generalization gaps:
+  `(test_nll - best_val_nll) / n`.
+- Report `H(A)`, `H(B)`, `H(A,B)`, MI, bootstrap std, and seed-level entropy
+  decomposition spread.
+- Choose checkpoints only by validation NLL, never by final MI value.
+- Exclude only objective saved-JSON training failures; keep clean high-MI and
+  low-MI seeds.
+
+V3 promotion gates:
+
+- Pilot gate: seeds `1,2,3,5` have no objective failures, no AB/BA held-out
+  NLL outlier, stable entropy decomposition, and `cv <= 0.06`.
+- Formal gate: clean seeds `1..8`, `cv <= 0.06`, bootstrap std well below
+  train-seed spread, and no mean drift after pilot extension.
+- If clean 8-seed `0.06 < cv <= 0.08`, extend to seeds `9..16` under the same
+  v3 protocol before any promotion.
+- If clean 8-seed `cv > 0.08`, do not rescue by selecting seeds or changing
+  one hyperparameter at that `L`; treat the protocol as unstable there.
+
+V3 ladder, once explicitly launched:
+
+1. Run `L=16` pilot to anchor against existing clean `L=16` behavior.
+2. Run `L=18` pilot to compare against p32 fixed-LR endpoint health.
+3. Run `L=20` pilot as the first larger-size feasibility check.
+4. If the first three pilots are clean, extend them to formal seeds `1..8`.
+5. Continue with `L=24`, `L=28`, `L=32`, and only then consider `L=40`.
+
+## Priority 1. Run P33 Fixed-LR Anchor
+
+Goal:
+
+Run a same-protocol v2 fixed-LR anchor at `L=16` before deciding whether the
+clean p32 `L=18` endpoint can be interpreted as a candidate endpoint or should
+seed a separate same-protocol curve.
+
+This is a protocol-consistency diagnostic, not a recommended fit update by
+default.
+
+Prelaunch checks:
 
 ```bash
-env BASE_ROOT=net/mi_scaling/p18_l8_ntrain400k \
-  L_VALUES=8 \
-  TRAIN_SEEDS='1 2 3' \
-  scripts/run_p16_l16_ntrain400k.sh
+scripts/run_mi_agent_audits.sh
+scripts/run_codex_gpu.sh "scripts/check_gpu_env.sh"
 ```
 
-Historical decision gates after seeds `1..3`:
-
-- If `cv <= 0.06` and the mean is close to the historical `L=8` point, decide
-  whether an 8-seed extension is necessary.
-- If the mean differs substantially from historical `L=8` or train-seed spread
-  remains high, extend to seeds `4..8`.
-- If the result changes the `L=8 -> L=10` slope materially, update
-  `docs/MI_FIT_POINTS.csv` and rerun the fit analysis.
-
-### P3. Start An `L=18` Pilot
-
-Status: completed as `p19_l18_ntrain400k_pilot`.
-
-Final 8-seed aggregate:
+Required audit marker:
 
 ```text
-mean(MI) = 9.573411
-seed_std = 0.574411
-cv = 0.060001
-mean bootstrap std = 0.104420
-min/max = 8.760048 / 10.379700
+MI_AGENT_AUDITS_PASSED
 ```
 
-Decision:
-
-- The 3-seed pilot had cv=`0.032451`, so it was extended to seeds `4..8`.
-- The final 8-seed cv is at the usable-baseline gate.
-- Seed 5 has abnormal `BA` training diagnostics and the highest MI.
-- Seed 7 is also high, but without the same saved-metric failure signature.
-- Treat `L=18` as provisional until seed-level sensitivity is resolved.
-
-The original pilot configuration was:
-
-Recommended pilot:
+Predeclared run:
 
 ```text
-run_id: p19_l18_ntrain400k_pilot
-L: 18
-n: 648
-model: MADE
-p: 0.05
-partition: x-mid
+run_id: p33_l16_made_depth0_width64_ntrain400k_batch1024_lr5e4_fixedlr_anchor
+L: 16
+architecture: MADE depth=0,width=64
 n_train: 400000
 n_val: 2000
 n_test: 2000
-train_seeds: 1,2,3
-batch: 512
-lr: 1e-3
+train_seeds: 1,2,3,5
+optimizer: AdamW
+lr: 0.0005
+weight_decay: 0.00001
+grad_clip_norm: 1.0
+warmup_steps: 1000
+divergence_nll_threshold: 1000
 lr_decay_factor: 0.5
-lr_decay_patience: 5
-min_lr: 1e-4
-early_stop_patience: 30
-mi_samples: 40000
-bootstrap_samples: 200
+lr_decay_patience: 3
+min_lr: 0.00001
+early_stop_patience: 20
+early_stop_min_delta: 0.01
+epoch: 80
+batch: 1024
+status: same-protocol anchor diagnostic only; fresh run root required
 ```
 
-Suggested command:
+Launch command template:
 
 ```bash
-env BASE_ROOT=net/mi_scaling/p19_l18_ntrain400k_pilot \
-  L_VALUES=18 \
-  TRAIN_SEEDS='1 2 3' \
-  scripts/run_p16_l16_ntrain400k.sh
+tmux new-session -d -s p33_l16_fixedlr_anchor \
+  'cd /home/jinboyu/GND/generative_decoder &&
+   env BASE_ROOT=net/mi_scaling/p33_l16_made_depth0_width64_ntrain400k_batch1024_lr5e4_fixedlr_anchor \
+   L_VALUES="16" TRAIN_SEEDS="1 2 3 5" N_TRAIN=400000 DEVICE=cuda:0 \
+   DEPTH=0 WIDTH=64 EPOCH=80 BATCH=1024 LR=0.0005 WEIGHT_DECAY=0.00001 \
+   GRAD_CLIP_NORM=1.0 WARMUP_STEPS=1000 DIVERGENCE_NLL_THRESHOLD=1000 \
+   MAX_TRAIN_STEPS=0 LR_DECAY_FACTOR=0.5 LR_DECAY_PATIENCE=3 MIN_LR=0.00001 \
+   EARLY_STOP_PATIENCE=20 EARLY_STOP_MIN_DELTA=0.01 scripts/run_made_mi_ntrain400k.sh \
+   > logs/p33_l16_made_depth0_width64_ntrain400k_batch1024_lr5e4_fixedlr_anchor.log 2>&1'
 ```
 
-Operational rule:
+After launch, verify:
 
-- If `batch=512` fails due to memory pressure, stop and create a new run id
-  such as `p19_l18_ntrain400k_b256`.
-- Do not mix different batch sizes or learning configurations under the same
-  run id.
+- canonical log exists and shows `scripts/run_made_mi_ntrain400k.sh` and
+  `decoding/train_mi_syndrome.py`, not a nested Codex prompt;
+- run root exists;
+- no duplicate writer is active.
 
-Historical decision gates:
+P33 decision gate:
 
-- If `cv <= 0.06`, extend to seeds `4..8`.
-- If `cv > 0.06`, inspect training records and seed-level MI before expanding.
-- Compare the 3-seed mean against extrapolations from `L=12,14,16`.
+- If any seed has objective saved-JSON training failure, keep p33 diagnostic
+  and do not promote p32.
+- If p33 is clean and the `L=16` mean is consistent with current p16 within
+  train-seed spread, then p32 can be reconsidered as a clean fixed-LR
+  `L=18` endpoint candidate under an explicit endpoint policy.
+- If p33 shifts `L=16` materially, do not mix p32 with current recommended
+  rows. Either build a same-protocol fixed-LR subset at `L=10,12,14,16,18` or
+  start the v3 quality-scaling track.
+- Do not change the recommended `L=18` row or fit values before the p33 report
+  and explicit endpoint-policy decision.
 
-### P3b. Diagnose The `L=18` Seed Split
+If p33 passes the pilot gate on seeds `1,2,3,5`, extend the same p33 run root
+with `TRAIN_SEEDS="4 6 7 8"` and no other configuration changes. Record the
+completed 8-seed anchor before any promotion decision.
 
-This is now the immediate priority before launching more expensive reruns.
+## Priority 2. Prepare V3 Launch Helper
 
-Required diagnostics:
-
-- Compare fits with all `L=18` seeds, without seed 5, and without seeds 5/7.
-- Inspect the seed 5 `BA` training record and late-epoch NLL history.
-- Decide whether to rerun seed 5 under a new run id or add more seeds, rather
-  than mixing any changed configuration into `p19_l18_ntrain400k_pilot`.
-- Do not use the `L=18` point as a clean formal result until this is resolved.
-
-### P4. Do Not Immediately Rerun `L=10/12`
-
-`L=10` and `L=12` use `n_train=200k`, while `L=14` and `L=16` use `400k`.
-This is a real inconsistency, but it should not be the next experiment unless
-the fit analysis shows a clear problem.
-
-Trigger conditions for rerunning `L=10/12` at `400k`:
-
-- Large systematic residuals at `L=10/12` compared with the `L=14/16`
-  `400k` trend.
-- Fit windows with and without `L=10/12` imply incompatible slopes.
-- `L=8` recheck indicates the transition into large-`L` is controlled by
-  training configuration rather than finite-size behavior.
-
-If triggered, start with a same-seed pilot:
+Before launching v3 pilots, add or reuse a helper that maps `L` and stage
+(`pilot` or `formal`) to:
 
 ```text
-L: 10,12
-n_train: 400000
-train_seeds: 1,2,3
+n_train
+n_val
+n_test
+max_optimizer_steps
+epoch
+warmup_steps
+early_stop_min_delta
+train_seeds
+run_id
+log path
 ```
 
-Only expand to 8 seeds if the pilot changes the existing `p9_largeL_ntrain200k`
-means or reduces uncertainty enough to affect the fit.
+The helper must implement the formulas in `v3_made_quality_scaling` exactly so
+future v3 runs are generated from the protocol, not hand-tuned per L.
 
-## Stability Criteria
+Initial v3 pilot values to verify:
 
-Use `docs/STABILITY_CHECKLIST.md` for final decisions.
+| L | n | n_train | n_val | n_test | max_steps | epoch | warmup | early_stop_min_delta | seeds |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| 16 | 512 | 409600 | 5120 | 5120 | 80000 | 200 | 4000 | 0.00512 | 1,2,3,5 |
+| 18 | 648 | 518400 | 6480 | 6480 | 80000 | 159 | 4000 | 0.00648 | 1,2,3,5 |
+| 20 | 800 | 640000 | 8000 | 8000 | 80000 | 128 | 4000 | 0.00800 | 1,2,3,5 |
 
-Working thresholds:
+Do not start v3 training until p33 is reported or the user explicitly redirects
+the active plan from v2 endpoint validation to v3 quality-scaling.
 
-| Level | Suggested gate |
-|---|---|
-| Evaluation stable | `mean bootstrap std` clearly below train-seed std |
-| Usable baseline | `cv <= 0.06`, at least 5 seeds, no obvious seed split |
-| Formal result | `cv <= 0.04..0.05`, 8 seeds, no mean drift after new seeds |
+## Priority 3. Reporting Rules
 
-Current status:
-
-| L | status |
-|---:|---|
-| 8 | usable 8-seed baseline, new bridge point above historical L8 |
-| 10 | usable 8-seed baseline |
-| 12 | usable 8-seed baseline |
-| 14 | usable 8-seed baseline, but low relative to L12-L16 interpolation |
-| 16 | usable 8-seed baseline and current best L16 point |
-| 18 | provisional 8-seed baseline; cv at gate and seed 5 diagnostic issue |
-
-## Recommended Execution Order
-
-1. Commit the current lightweight records. Completed.
-2. Create `docs/MI_FIT_ANALYSIS.md`. Completed.
-3. Run `L=8, n_train=400k, seeds=1..3`. Completed.
-4. Decide whether to extend `L=8` to seeds `4..8`. Completed; extended and
-   finished.
-5. Start `L=18, n_train=400k, seeds=1..3`. Completed.
-6. Decide whether to extend `L=18` to seeds `4..8`. Completed; extended and
-   finished.
-7. Diagnose the `L=18` seed split, especially seed 5 and seed 7.
-8. Rerun `L=10/12` at `400k` only if the fit analysis or `L=8/L18` results
-   show that the mixed `n_train` protocol is limiting the conclusion.
-
-## Reporting Rules
-
-When updating the recommended fit:
-
-- Add every completed aggregate to `docs/MI_FIT_POINTS.csv`.
+- Do not include heavy `net/` artifacts in Git.
+- Keep old rows in `docs/MI_FIT_POINTS.csv`; do not delete diagnostic rows.
 - Mark only one row per `L` as `include_in_recommended_fit=yes`.
-- Update `docs/MI_FIT_SUMMARY.md` after changing the CSV.
-- Keep run-specific details in `docs/agent_outputs/scaling_runs/`.
-- Do not include heavy `net/` artifacts in the lightweight GitHub record.
-- Preserve older rows as auditable references rather than deleting them.
+- Any changed recommended row must be accompanied by updates to
+  `docs/MI_FIT_SUMMARY.md` and `docs/MI_FIT_ANALYSIS.md`.
+- Any failed seed must have the failure signature recorded from saved training
+  JSON, not only from MI value.
+- Keep CNN/PixelCNN work as future architecture planning unless the user
+  explicitly redirects away from MADE.

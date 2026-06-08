@@ -62,6 +62,30 @@ def parse_args():
     parser.add_argument("--batch", type=int, default=256, help="Training batch size.")
     parser.add_argument("--lr", type=float, default=0.001, help="Training learning rate.")
     parser.add_argument("--weight-decay", type=float, default=0.0, help="Adam/AdamW weight decay.")
+    parser.add_argument(
+        "--grad-clip-norm",
+        type=float,
+        default=0.0,
+        help="Clip gradient norm to this value when positive.",
+    )
+    parser.add_argument(
+        "--warmup-steps",
+        type=int,
+        default=0,
+        help="Optimizer steps used for linear LR warmup.",
+    )
+    parser.add_argument(
+        "--divergence-nll-threshold",
+        type=float,
+        default=0.0,
+        help="Stop and flag objective failure if train/val NLL exceeds this positive threshold.",
+    )
+    parser.add_argument(
+        "--max-train-steps",
+        type=int,
+        default=0,
+        help="Optional maximum optimizer steps; set <=0 to disable.",
+    )
     parser.add_argument("--lr-decay-factor", type=float, default=0.5, help="Validation-plateau LR decay factor.")
     parser.add_argument(
         "--lr-decay-patience",
@@ -304,6 +328,14 @@ def training_common_args(args, l_value, order, dataset_dir, model_dir):
         str(args.lr),
         "-weight_decay",
         str(args.weight_decay),
+        "-grad_clip_norm",
+        str(args.grad_clip_norm),
+        "-warmup_steps",
+        str(args.warmup_steps),
+        "-divergence_nll_threshold",
+        str(args.divergence_nll_threshold),
+        "-max_train_steps",
+        str(args.max_train_steps),
         "-lr_decay_factor",
         str(args.lr_decay_factor),
         "-lr_decay_patience",
@@ -497,6 +529,10 @@ def write_sweep_manifest(args, result_paths, summary_dir):
             "batch": args.batch,
             "lr": args.lr,
             "weight_decay": args.weight_decay,
+            "grad_clip_norm": args.grad_clip_norm,
+            "warmup_steps": args.warmup_steps,
+            "divergence_nll_threshold": args.divergence_nll_threshold,
+            "max_train_steps": args.max_train_steps,
             "lr_decay_factor": args.lr_decay_factor,
             "lr_decay_patience": args.lr_decay_patience,
             "min_lr": args.min_lr,

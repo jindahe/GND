@@ -8,7 +8,7 @@ echo "=== HOST ==="
 hostname
 date -Is
 
-echo "=== NVIDIA-SMI ==="
+echo "=== GPU / NVIDIA-SMI ==="
 nvidia-smi
 
 echo "=== PYTHON / TORCH ==="
@@ -29,6 +29,7 @@ if not torch.cuda.is_available():
 for index in range(torch.cuda.device_count()):
     print(f"device {index}: {torch.cuda.get_device_name(index)}")
 
+print("current device:", torch.cuda.current_device())
 x = torch.empty((1,), device="cuda:0")
 print("allocation:", x.device)
 
