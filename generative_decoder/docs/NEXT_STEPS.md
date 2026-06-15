@@ -12,8 +12,7 @@ sample errors -> build [gamma,beta] datasets -> train q_theta(beta,gamma)
 -> aggregate n_d^min(L)
 ```
 
-`outline.md` uses CMI terminology, but the implemented quantity is ordinary
-bipartite mutual information `I(A:B)`.
+The outline quantity is ordinary bipartite mutual information `I(A:B)`.
 
 Implemented outline cuts:
 
@@ -21,8 +20,9 @@ Implemented outline cuts:
 - `quarter`: `I(beta_1 : beta_2, gamma)`
 - `three_quarter`: `I(beta, gamma_1 : gamma_2)`
 
-See `docs/ENTROPY_BACKENDS_FOR_MI.md` for the current plan to make these cuts
-extensible through a shared `CutRecord` resolver instead of hard-coded branches.
+See `docs/THEORY_GUIDE.md` for the theory target and scalable-MI rationale.
+See `docs/IMPLEMENTATION.md` for the cut-record schema, backend contract, CLI
+plan, and tests.
 
 ## Immediate Unfinished Work
 
@@ -34,11 +34,12 @@ extensible through a shared `CutRecord` resolver instead of hard-coded branches.
    - record true-sample and model-sample cut MI JSON files.
 
 2. Add an extensible cut layer for GND MI:
-   - introduce a shared `CutRecord` schema with `a_indices`, `b_indices`, and
-     reserved `c_indices`
+   - introduce a shared `CutRecord` schema with `a_indices` and `b_indices`
    - support outline cuts, variable block cuts, and custom JSON index-set cuts
    - make `gnd.evaluate_cut_mi` and `gnd.exact_mi` consume the same resolved cut
-     records.
+     records
+   - record the estimator/backend and fully resolved variable indices for every
+     GND MI output.
 
 3. Define the first formal `n_d^min(L)` policy:
    - capacity key, initially `parameter_count`

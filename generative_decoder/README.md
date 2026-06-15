@@ -13,9 +13,8 @@ The current mainline follows the GND formulation:
 5. decode by sequentially generating `beta` conditioned on an observed syndrome
 6. compare true-sample and model-sample cut MI for the outline/L2M analysis
 
-`outline.md` uses the term CMI, but in this codebase it is interpreted as
-ordinary bipartite mutual information `I(A:B)` unless a future document defines
-an explicit conditioning variable.
+The outline/L2M target is ordinary bipartite mutual information `I(A:B)` over
+GND variables.
 
 ## Repository Layout
 
@@ -90,8 +89,9 @@ python -m gnd.evaluate_decoder \
 
 ## Outline Cut MI
 
-`outline.md` defines the current MI objective. The distribution is over GND
-variables:
+`docs/THEORY_GUIDE.md` defines the current MI objective, and
+`docs/IMPLEMENTATION.md` defines the cut-record and backend contract. The
+distribution is over GND variables:
 
 ```text
 p(beta, gamma) = p(beta_1, beta_2, gamma_1, gamma_2)
@@ -111,7 +111,7 @@ Implemented cut definitions:
 - `three_quarter`: `I(beta, gamma_1 : gamma_2)`, where `(beta, gamma_1)` is the
   A side and `gamma_2` is the B side
 
-The first step in `outline.md` is to compute these MI values under the true
+The first step is to compute these bipartite MI values under the true
 probability distribution `p(beta, gamma)` at the selected physical error rate.
 The second step is to train neural architectures to learn that same
 distribution and use the resulting model MI records for `n_d^min(L)`.
