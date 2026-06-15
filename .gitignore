@@ -1,17 +1,15 @@
-# Data
-decoding/net
-
-decoding/lo_rate
-
-# code/
-
-module/3d_sc
-
 # Local environment and tooling
+.agents/
 .codex
 .codex/
 .venv/
 
 # Python cache
 __pycache__/
+*/__pycache__/
+**/__pycache__/
 *.pyc
+
+# Legacy generated data
+legacy/original_gnd/decoding/net/
+legacy/original_gnd/decoding/lo_rate/
