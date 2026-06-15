@@ -9,10 +9,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-from record_utils import utc_timestamp, write_json_record
+from .record_utils import utc_timestamp, write_json_record
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+ARCHIVE_ROOT = PROJECT_ROOT / "syndrome_only_mi"
 
 
 def parse_args():
@@ -31,14 +32,14 @@ def parse_args():
     parser.add_argument("--device", type=str, default="cpu", help="Device used by MI evaluation.")
     parser.add_argument("--partition-axis", type=str, default="x", choices=["x", "y"], help="Spatial cut axis.")
     parser.add_argument("--cut", type=int, default=None, help="Optional explicit cut position.")
-    parser.add_argument("--save-dir", type=str, default="net/mi_scaling/models", help="Checkpoint directory passed through to mi_bipartite.py.")
+    parser.add_argument("--save-dir", type=str, default="syndrome_only_mi/net/mi_scaling/models", help="Checkpoint directory passed through to mi_bipartite.py.")
     parser.add_argument("--ab-checkpoint", type=str, default="", help="Optional explicit AB checkpoint path.")
     parser.add_argument("--ba-checkpoint", type=str, default="", help="Optional explicit BA checkpoint path.")
     parser.add_argument("--chunk-size", type=int, default=1000, help="Chunk size for MI estimation.")
     parser.add_argument("--bootstrap-samples", type=int, default=200, help="Bootstrap resamples per run.")
     parser.add_argument("--bootstrap-seed-base", type=int, default=1000, help="Base seed for bootstrap RNG; eval seed is added to this value.")
-    parser.add_argument("--result-dir", type=str, default="net/mi_stability/results", help="Directory for per-run MI JSON outputs.")
-    parser.add_argument("--summary-dir", type=str, default="net/mi_stability", help="Directory for grouped summary outputs.")
+    parser.add_argument("--result-dir", type=str, default="syndrome_only_mi/net/mi_stability/results", help="Directory for per-run MI JSON outputs.")
+    parser.add_argument("--summary-dir", type=str, default="syndrome_only_mi/net/mi_stability", help="Directory for grouped summary outputs.")
     parser.add_argument("--skip-existing", action="store_true", help="Reuse existing per-run MI JSON outputs when present.")
     return parser.parse_args()
 
@@ -80,7 +81,8 @@ def maybe_run_single(args, sample_size, eval_seed, result_dir, env):
     bootstrap_seed = args.bootstrap_seed_base + eval_seed
     cmd = [
         args.python,
-        "decoding/mi_bipartite.py",
+        "-m",
+        "syndrome_only_mi.bipartite_mi",
         "-c_type",
         args.c_type,
         "-n",
@@ -257,7 +259,7 @@ def main():
         "record_type": "mi_stability_summary",
         "schema_version": 1,
         "created_at_utc": utc_timestamp(),
-        "script": "decoding/mi_stability_analysis.py",
+        "script": "syndrome_only_mi/stability_analysis.py",
         "config": {
             "sample_sizes": args.sample_sizes,
             "eval_seeds": args.eval_seeds,

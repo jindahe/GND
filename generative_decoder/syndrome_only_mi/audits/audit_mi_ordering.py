@@ -2,7 +2,7 @@
 """Audit the AB/BA prefix semantics used by the syndrome-only MI estimator.
 
 This script is checkpoint-free. It builds the exact two-bit pair distribution
-from `scripts/pair_model_benchmark.py` and verifies the entropy identities
+from `syndrome_only_mi.audits.pair_model_benchmark` and verifies the entropy identities
 that the full autoregressive estimator relies on:
 
 - AB prefix gives H(A)
@@ -19,11 +19,11 @@ import math
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.pair_model_benchmark import (  # noqa: E402
+from syndrome_only_mi.audits.pair_model_benchmark import (  # noqa: E402
     ab_suffix_conditional_entropy,
     exact_ar_entropy_terms,
     exact_mi,

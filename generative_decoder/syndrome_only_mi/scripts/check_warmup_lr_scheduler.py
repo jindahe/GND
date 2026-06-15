@@ -4,12 +4,11 @@ from pathlib import Path
 
 import torch
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DECODING_DIR = PROJECT_ROOT / "decoding"
-if str(DECODING_DIR) not in sys.path:
-    sys.path.insert(0, str(DECODING_DIR))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-from train_mi_syndrome import apply_warmup_lr, current_lr, set_optimizer_lr  # noqa: E402
+from syndrome_only_mi.train import apply_warmup_lr, current_lr, set_optimizer_lr  # noqa: E402
 
 
 def assert_close(actual, expected):

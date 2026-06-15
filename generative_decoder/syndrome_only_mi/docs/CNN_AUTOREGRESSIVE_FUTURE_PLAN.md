@@ -114,10 +114,10 @@ Any CNN autoregressive model must preserve the syndrome-only MI invariants:
 The implementation must also preserve artifact compatibility with:
 
 ```text
-decoding/train_mi_syndrome.py
-decoding/mi_bipartite.py
-decoding/run_mi_scale_sweep.py
-docs/MI_FIT_POINTS.csv
+syndrome_only_mi/train.py
+syndrome_only_mi/bipartite_mi.py
+syndrome_only_mi/run_scale_sweep.py
+syndrome_only_mi/docs/MI_FIT_POINTS.csv
 ```
 
 ## Validation Plan

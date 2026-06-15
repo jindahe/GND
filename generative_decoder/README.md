@@ -1,108 +1,189 @@
 # Generative Decoder
 
-This repository contains a cleaned code-capacity decoding workflow and a
-syndrome-only mutual-information (MI) pipeline for toric-code experiments.
+This repository contains a generative neural decoder (GND) workflow for
+quantum error-correcting codes, plus an archived syndrome-only mutual
+information (MI) scaling workflow for toric-code experiments.
 
-The main syndrome-only MI workflow is:
+The current mainline follows the GND formulation:
 
-1. generate or reuse a toric-code instance
-2. build `AB` and `BA` syndrome datasets for a spatial bipartition
-3. train one autoregressive model per order
-4. evaluate `I_q(A;B)` from the two checkpoints
-5. aggregate per-`L` results into an `MI vs L` summary
+1. generate or reuse a code instance
+2. sample physical errors from an error model
+3. convert errors into logical variables `beta` and syndrome variables `gamma`
+4. train an autoregressive density model `q_theta(beta, gamma)`
+5. decode by sequentially generating `beta` conditioned on an observed syndrome
+6. compare true-sample and model-sample cut MI for the outline/L2M analysis
 
-Experiment-specific plans, seed lists, partial-run status, and interpretation
-notes belong in `docs/agent_outputs/scaling_runs/` and the JSON records written
-next to the artifacts. Keep README as the stable project entry point.
-
-## Current Focus
-
-The active research target is the toric-code syndrome-only boundary-law fit at
-fixed physical error rate `p = 0.05`:
-
-```text
-I(L) = 2 alpha(p) L + beta(p) + o(1)
-```
-
-For the left/right half-system cut on the torus:
-
-- theoretical audits of the `AB/BA` entropy decomposition are complete
-- the regression gate is `scripts/run_mi_agent_audits.sh`
-- multi-seed large-`L` artifacts live under `net/mi_scaling/`
-- run-specific notes live under `docs/agent_outputs/scaling_runs/`
-- train-seed spread should be treated as the main numerical uncertainty source
-
-## Fit Data
-
-Completed lightweight MI fit records are kept in:
-
-- `docs/MI_FIT_SUMMARY.md`
-- `docs/MI_FIT_POINTS.csv`
-
-Use rows with `include_in_recommended_fit=yes` for the current recommended fit
-curve. Generated datasets, checkpoints, per-run result folders, and plots under
-`net/` are intentionally excluded from the lightweight GitHub record.
+`outline.md` uses the term CMI, but in this codebase it is interpreted as
+ordinary bipartite mutual information `I(A:B)` unless a future document defines
+an explicit conditioning variable.
 
 ## Repository Layout
 
-- `code/`: pre-generated code instances
-- `module/`: core code definitions, GF(2) algebra, error models, MADE / NADE / TraDE
+- `gnd/`: current GND data, training, decoding, cut-MI, and `n_d^min(L)` tools
+- `module/`: shared code definitions, GF(2) algebra, error models, MADE / NADE / TraDE
 - `decoding/code_generator.py`: generate and save code instances
-- `decoding/syndrome_dataset.py`: build syndrome-only datasets
-- `decoding/train_mi_syndrome.py`: train syndrome-only autoregressive models
-- `decoding/mi_bipartite.py`: evaluate syndrome-only bipartite MI
-- `decoding/mi_scale_analysis.py`: aggregate per-`L` MI records
-- `decoding/run_mi_scale_sweep.py`: end-to-end code/data/train/evaluate orchestration
-- `decoding/training.py`: original code-capacity decoder training path
-- `decoding/forward_decoding.py`: load a decoder checkpoint and evaluate logical error rate
+- `decoding/training.py`: legacy code-capacity GND-style trainer
+- `decoding/forward_decoding.py`: legacy checkpoint decoder evaluation
 - `decoding/mwpm.py`: MWPM baseline
 - `decoding/bposd.py`: BP+OSD baseline
-- `scripts/`: audit and experiment helper scripts
-- `docs/`: derivations, checklists, and experiment notes
+- `syndrome_only_mi/`: archived syndrome-only toric MI pipeline, including
+  its old scripts, docs, logs, and generated MI artifacts
+- `scripts/`: GPU/CUDA wrapper utilities used by the current repo
+- `docs/`: current project notes and non-syndrome-only plans
 - `net/`: generated datasets, checkpoints, result JSON files, and plots
 
-## GPU Usage
+The old syndrome-only entry points have been moved out of top-level
+`decoding/` and `scripts/`. New or resumed syndrome-only work should use
+`python -m syndrome_only_mi...` or scripts under `syndrome_only_mi/scripts/`.
 
-Codex sessions may have two different execution contexts:
+## GND Quick Start
 
-- the default sandboxed shell
-- the project GPU wrapper at `scripts/run_codex_gpu.sh`
-
-The default shell may not see the host CUDA device. Check both visibility and
-allocation before starting a CUDA run.
-
-Sandbox visibility check:
-
-```bash
-python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.device_count() if torch.cuda.is_available() else 0)"
-```
-
-Wrapper visibility and allocation check:
-
-```bash
-./scripts/run_codex_gpu.sh "python3 -c 'import torch; print(torch.cuda.is_available()); print(torch.cuda.device_count()); x=torch.empty((1,), device=\"cuda:0\"); print(x.device)'"
-```
-
-Interpretation:
-
-- If the wrapper prints `True`, a positive device count, and `cuda:0`, CUDA is
-  usable through the wrapper.
-- If the sandbox cannot see CUDA but the wrapper can allocate on CUDA, run CUDA
-  jobs through `scripts/run_codex_gpu.sh`.
-- If PyTorch can see the GPU but allocation fails, do not start a formal CUDA
-  run until the host GPU, driver, or scheduler state is fixed.
-- If neither context can see CUDA, use CPU only for small checks.
-
-For long-running experiments, pass training configuration explicitly rather
-than relying on script defaults.
-
-## Code-Capacity Usage
-
-Generate a surface-code instance:
+Generate a small surface-code instance if it does not already exist:
 
 ```bash
 python decoding/code_generator.py -c_type sur -n 13 -d 3 -k 1 -seed 0
 ```
+
+Build a `beta_gamma` GND dataset:
+
+```bash
+python -m gnd.datasets \
+  --c-type sur \
+  --n 13 \
+  --d 3 \
+  --k 1 \
+  --seed 0 \
+  --e-model dep \
+  --er 0.05 \
+  --n-train 10000 \
+  --n-val 2000 \
+  --n-test 2000 \
+  --target beta_gamma \
+  --output-dir net/gnd/datasets
+```
+
+Train a small MADE density model:
+
+```bash
+python -m gnd.train \
+  --dataset-path net/gnd/datasets/beta_gamma_sur_n13_d3_k1_seed0_er0.05_dep_ntrain10000.pt \
+  --save-dir net/gnd/models \
+  --n-type made \
+  --depth 0 \
+  --width 64 \
+  --device cpu \
+  --dtype float32 \
+  --epoch 100 \
+  --batch 256 \
+  --lr 0.001 \
+  --train-seed 1
+```
+
+Evaluate the trained checkpoint as a decoder:
+
+```bash
+python -m gnd.evaluate_decoder \
+  --checkpoint net/gnd/models/made_beta_gamma_sur_n13_d3_k1_seed0_er0.05_dep_tseed1.pt \
+  --trials 1000 \
+  --device cpu
+```
+
+## Outline Cut MI
+
+`outline.md` defines the current MI objective. The distribution is over GND
+variables:
+
+```text
+p(beta, gamma) = p(beta_1, beta_2, gamma_1, gamma_2)
+```
+
+Here `beta` denotes logical variables and `gamma` denotes syndrome variables
+after mapping physical errors through the code. These cuts are **not physical
+real-space cuts of qubits or plaquettes**, and they are **not syndrome-only
+spatial cuts**. The archived syndrome-only AB/BA workflow is a separate
+historical pipeline and should not be used as the meaning of the outline cuts.
+
+Implemented cut definitions:
+
+- `middle`: `I(beta : gamma)`
+- `quarter`: `I(beta_1 : beta_2, gamma)`, where `beta_1` is the A side and
+  `(beta_2, gamma)` is the B side
+- `three_quarter`: `I(beta, gamma_1 : gamma_2)`, where `(beta, gamma_1)` is the
+  A side and `gamma_2` is the B side
+
+The first step in `outline.md` is to compute these MI values under the true
+probability distribution `p(beta, gamma)` at the selected physical error rate.
+The second step is to train neural architectures to learn that same
+distribution and use the resulting model MI records for `n_d^min(L)`.
+
+Estimate all three from held-out true samples:
+
+```bash
+python -m gnd.evaluate_cut_mi \
+  --dataset-path net/gnd/datasets/beta_gamma_sur_n13_d3_k1_seed0_er0.05_dep_ntrain10000.pt \
+  --split test \
+  --cut all \
+  --samples 2000 \
+  --bootstrap-samples 200 \
+  --output-path net/gnd/results/true_cut_mi_sur_d3.json
+```
+
+Estimate all three from a trained model:
+
+```bash
+python -m gnd.evaluate_cut_mi \
+  --checkpoint net/gnd/models/made_beta_gamma_sur_n13_d3_k1_seed0_er0.05_dep_tseed1.pt \
+  --cut all \
+  --samples 2000 \
+  --bootstrap-samples 200 \
+  --device cpu \
+  --output-path net/gnd/results/model_cut_mi_sur_d3_made_width64.json
+```
+
+For small codes, compute exact true-distribution cut MI by exhaustive
+Pauli-error enumeration:
+
+```bash
+python -m gnd.exact_mi \
+  --c-type rep \
+  --n 3 \
+  --d 3 \
+  --k 1 \
+  --seed 0 \
+  --e-model dep \
+  --er 0.05 \
+  --cut all \
+  --output-path net/gnd/results/exact_cut_mi_rep_d3.json
+```
+
+Exact enumeration sums all `4^n` Pauli errors, maps each error to
+`(gamma,beta)`, and evaluates `H(A)+H(B)-H(A,B)` from the resulting exact joint
+distribution. The `--max-exact-errors` guard refuses large instances before
+they launch. This backend is intended for validation and small-code references
+rather than large scaling sweeps; `sur_n13` requires enumerating `67,108,864`
+errors and therefore needs an explicit larger guard.
+
+The sampled true/model estimator is an empirical discrete plug-in estimator.
+It is useful for smoke tests and controlled small problems, but it is biased in
+sparse high-dimensional regimes. Formal `n_d^min(L)` studies should predeclare
+sample sizes, capacity metrics, and error thresholds.
+
+Aggregate model MI records into `n_d^min(L)` once true and model MI JSON files
+exist:
+
+```bash
+python -m gnd.sweep_nd_min \
+  --true-result net/gnd/results/true_cut_mi_sur_d3.json \
+  --model-result net/gnd/results/model_cut_mi_sur_d3_made_width64.json \
+  --relative-tolerance 0.10 \
+  --capacity-key parameter_count \
+  --output-json net/gnd/nd_min/nd_min.json \
+  --output-csv net/gnd/nd_min/nd_min.csv
+```
+
+## Legacy Code-Capacity Usage
+
+The legacy scripts remain available while the new `gnd/` package matures.
 
 Train a small MADE decoder:
 
@@ -146,241 +227,67 @@ python decoding/mwpm.py -c_type sur -n 13 -d 3 -k 1 -seed 0 -e_model dep -trials
 python decoding/bposd.py -c_type sur -n 13 -d 3 -k 1 -seed 0 -trials 1000
 ```
 
-## Syndrome-Only MI Usage
+## Syndrome-Only MI Archive
 
-This path estimates model-distribution mutual information `I_q(A;B)` for a
-spatial bipartition of syndrome bits.
-
-### Single-L Example
-
-Example: `L=4`, toric code, MADE, CPU.
+The previous toric-code syndrome-only boundary-law workflow is now isolated in
+`syndrome_only_mi/`. Its audit gate is:
 
 ```bash
-python decoding/code_generator.py -c_type tor -n 32 -d 4 -k 2 -seed 0
-
-python decoding/syndrome_dataset.py \
-  -c_type tor \
-  -n 32 \
-  -d 4 \
-  -k 2 \
-  -seed 0 \
-  -e_model dep \
-  -er 0.05 \
-  -n_train 10000 \
-  -n_val 2000 \
-  -n_test 2000 \
-  -partition_axis x \
-  -partition_order AB \
-  -dataset_dir net/syndrome_data
-
-python decoding/syndrome_dataset.py \
-  -c_type tor \
-  -n 32 \
-  -d 4 \
-  -k 2 \
-  -seed 0 \
-  -e_model dep \
-  -er 0.05 \
-  -n_train 10000 \
-  -n_val 2000 \
-  -n_test 2000 \
-  -partition_axis x \
-  -partition_order BA \
-  -dataset_dir net/syndrome_data
-
-python decoding/train_mi_syndrome.py \
-  -c_type tor \
-  -n 32 \
-  -d 4 \
-  -k 2 \
-  -seed 0 \
-  -e_model dep \
-  -er 0.05 \
-  -n_type made \
-  -partition_axis x \
-  -partition_order AB \
-  -device cpu \
-  -width 64 \
-  -lr_decay_factor 0.5 \
-  -lr_decay_patience 5 \
-  -min_lr 0.0002 \
-  -early_stop_patience 20 \
-  -save True \
-  -save_dir net/syndrome_models
-
-python decoding/train_mi_syndrome.py \
-  -c_type tor \
-  -n 32 \
-  -d 4 \
-  -k 2 \
-  -seed 0 \
-  -e_model dep \
-  -er 0.05 \
-  -n_type made \
-  -partition_axis x \
-  -partition_order BA \
-  -device cpu \
-  -width 64 \
-  -lr_decay_factor 0.5 \
-  -lr_decay_patience 5 \
-  -min_lr 0.0002 \
-  -early_stop_patience 20 \
-  -save True \
-  -save_dir net/syndrome_models
-
-python decoding/mi_bipartite.py \
-  -c_type tor \
-  -n 32 \
-  -d 4 \
-  -k 2 \
-  -seed 0 \
-  -e_model dep \
-  -er 0.05 \
-  -n_type made \
-  -partition_axis x \
-  -device cpu \
-  -save_dir net/syndrome_models \
-  -mi_samples 10000 \
-  -bootstrap_samples 200 \
-  -mi_output_path net/mi_scaling/results/made_tor_n32_d4_k2_seed0_er0.05_dep_xmid.json
+syndrome_only_mi/scripts/run_mi_agent_audits.sh
 ```
 
-Artifacts from this flow:
+The required marker is:
 
-- code instance: `code/tor_n32_d4_k2_seed0`
-- datasets: `net/syndrome_data/tor_n32_d4_k2_seed0_er0.05_dep_AB_xmid.pt` and `..._BA_xmid.pt`
-- checkpoints: `net/syndrome_models/made_tor_n32_d4_k2_seed0_er0.05_dep_AB_xmid.pt` and `..._BA_xmid.pt`
-- training records: `net/syndrome_models/records/*.json`
-- MI result record: `net/mi_scaling/results/*.json`
+```text
+MI_AGENT_AUDITS_PASSED
+```
 
-### Scale Sweep
+Archived fit records and run reports live under:
 
-For a symmetric left/right cut, even `L` values are preferred. Odd `L` values are
-supported, but the default `cut = L // 2` gives an unbalanced partition.
+- `syndrome_only_mi/docs/MI_FIT_SUMMARY.md`
+- `syndrome_only_mi/docs/MI_FIT_POINTS.csv`
+- `syndrome_only_mi/docs/MI_FIT_ANALYSIS.md`
+- `syndrome_only_mi/docs/agent_outputs/scaling_runs/`
 
-Small CPU example:
+See `syndrome_only_mi/README.md` for the old AB/BA workflow and command
+examples.
+
+## GPU Usage
+
+Codex sessions may have two different execution contexts:
+
+- the default sandboxed shell
+- the project GPU wrapper at `scripts/run_codex_gpu.sh`
+
+The default shell may not see the host CUDA device. Check both visibility and
+allocation before starting a CUDA run.
+
+Sandbox visibility check:
 
 ```bash
-python decoding/run_mi_scale_sweep.py \
-  --l-values 4 6 8 \
-  --device cpu \
-  --n-type made \
-  --n-train 10000 \
-  --n-val 2000 \
-  --n-test 2000 \
-  --epoch 100 \
-  --batch 256 \
-  --width 64 \
-  --lr 0.001 \
-  --lr-decay-factor 0.5 \
-  --lr-decay-patience 5 \
-  --min-lr 0.0002 \
-  --early-stop-patience 20 \
-  --mi-samples 10000 \
-  --bootstrap-samples 200
+python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.device_count() if torch.cuda.is_available() else 0)"
 ```
 
-The sweep script will:
-
-1. generate missing toric-code instances under `code/`
-2. build `AB/BA` syndrome datasets
-3. train `AB/BA` syndrome-only models
-4. evaluate `I_q(A;B)` for each `L`
-5. write summaries under the selected `--summary-dir`
-
-`run_mi_scale_sweep.py` has conservative local defaults such as `--device cpu`
-and `--width 32`. Formal runs should pass the intended device, architecture,
-training, evaluation, and output-directory flags explicitly.
-
-## Theory Notes
-
-For the theoretical interpretation of the fitted quantity, use:
-
-- `docs/toric_syndrome_only_mi_simple_derivation.md`
-- `docs/toric_syndrome_only_mi_algebraic_form.md`
-
-Operationally:
-
-- `AB` prefix estimates `H(A)`
-- `BA` prefix estimates `H(B)`
-- `AB` full-sequence NLL estimates `H(A,B)`
-- the fitted constant `beta(p)` is tied to the current independent-generator
-  syndrome coordinates and should not be over-interpreted as a topological
-  constant from a full-check representation
-
-## Aggregation And Stability
-
-Aggregate existing per-`L` MI JSON files:
+Wrapper visibility and allocation check:
 
 ```bash
-python decoding/mi_scale_analysis.py \
-  --result-path path/to/result_L4.json \
-  --result-path path/to/result_L6.json \
-  --output-json net/mi_scaling/mi_vs_L.json \
-  --output-csv net/mi_scaling/mi_vs_L.csv \
-  --output-plot net/mi_scaling/mi_vs_L.png
+./scripts/run_codex_gpu.sh "python3 -c 'import torch; print(torch.cuda.is_available()); print(torch.cuda.device_count()); x=torch.empty((1,), device=\"cuda:0\"); print(x.device)'"
 ```
 
-Run repeated MI evaluations for convergence checks:
+For long-running experiments, pass training configuration explicitly rather
+than relying on script defaults. Use `tmux` for long GPU jobs and keep run ids,
+commands, and logs in the relevant run report or `docs/NEXT_STEPS.md`.
 
-```bash
-python decoding/mi_stability_analysis.py \
-  --sample-sizes 1000 2000 5000 10000 \
-  --eval-seeds 0 1 2 3 4 \
-  --c-type tor \
-  --n 32 \
-  --d 4 \
-  --k 2 \
-  --seed 0 \
-  --e-model dep \
-  --er 0.05 \
-  --n-type made \
-  --device cpu \
-  --partition-axis x \
-  --save-dir net/mi_scaling/models \
-  --bootstrap-samples 200
-```
+## Generated Artifacts
 
-Run-level hyperparameters such as `batch`, `lr`, sample count, seed list, and
-output directories are experiment-specific. Record them in JSON artifacts and
-matching experiment notes, not as permanent README guidance.
+Generated checkpoints, datasets, logs, and plots should stay out of Git. Common
+output roots are:
 
-## Experiment Records
+- `net/gnd/datasets/`
+- `net/gnd/models/`
+- `net/gnd/results/`
+- `net/gnd/nd_min/`
+- `syndrome_only_mi/net/` for archived syndrome-only MI artifacts
+- `logs/`
 
-The current scripts write machine-readable records:
-
-- `decoding/train_mi_syndrome.py` writes one JSON training record per checkpoint.
-- `decoding/mi_bipartite.py` writes one JSON MI result per evaluation when
-  `-mi_output_path` is provided.
-- `decoding/mi_stability_analysis.py` writes raw and grouped convergence summaries.
-- `decoding/mi_scale_analysis.py` writes aggregate `MI vs L` summaries.
-- `decoding/run_mi_scale_sweep.py` writes a `sweep_manifest.json` for each sweep.
-
-Each recorded run should preserve:
-
-- code identifiers: `c_type`, `n`, `d`, `k`, `seed`
-- physical-noise identifiers: `e_model`, `er`
-- model identifiers: `n_type`, architecture hyperparameters, effective width,
-  and parameter count
-- training hyperparameters: device, dtype, epoch count, batch size, learning
-  rate, scheduler settings, and epochs trained
-- dataset provenance: dataset path, partition metadata, and sample counts
-- final metrics: `best_val_nll`, `test_nll`, or `I_q(A;B)` plus bootstrap statistics
-- artifact paths: checkpoint path, result JSON path, summary path, and plot path
-
-Do not rely on ad-hoc notes or shell history as the only experiment record.
-Use the JSON files and experiment notes as the source of truth.
-
-## Notes
-
-- `decoding/training.py` writes code-capacity decoder checkpoints under
-  `net/code_capacity/`.
-- The syndrome-only MI pipeline writes datasets, checkpoints, and summaries
-  under `net/syndrome_data/`, `net/syndrome_models/`, `net/mi_scaling/`, or the
-  explicit output directories passed on the command line.
-- The clean copy preserves the original tensor / Pauli representation and CLI
-  flag style.
-- `training.py` and `forward_decoding.py` include minor fixes versus the
-  original scripts: stable project-root path handling, correct `trade` / `nade`
-  branching, and simpler checkpoint handling.
-- Environment setup notes are documented in `ENVIRONMENT.md`.
+Environment setup notes are documented in `ENVIRONMENT.md`.

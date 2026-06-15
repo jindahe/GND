@@ -6,10 +6,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-from record_utils import utc_timestamp
+from .record_utils import utc_timestamp
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+ARCHIVE_ROOT = PROJECT_ROOT / "syndrome_only_mi"
 
 
 def parse_args():
@@ -29,19 +30,19 @@ def parse_args():
     parser.add_argument(
         "--output-json",
         type=str,
-        default="net/mi_scaling/mi_vs_L.json",
+        default="syndrome_only_mi/net/mi_scaling/mi_vs_L.json",
         help="Summary JSON output path, relative to repo root unless absolute.",
     )
     parser.add_argument(
         "--output-csv",
         type=str,
-        default="net/mi_scaling/mi_vs_L.csv",
+        default="syndrome_only_mi/net/mi_scaling/mi_vs_L.csv",
         help="Summary CSV output path, relative to repo root unless absolute.",
     )
     parser.add_argument(
         "--output-plot",
         type=str,
-        default="net/mi_scaling/mi_vs_L.png",
+        default="syndrome_only_mi/net/mi_scaling/mi_vs_L.png",
         help="Plot output path, relative to repo root unless absolute.",
     )
     parser.add_argument(

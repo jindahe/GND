@@ -75,7 +75,7 @@ def iter_record_paths(root):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--root", type=Path, default=Path("net/mi_scaling"))
+    parser.add_argument("--root", type=Path, default=Path("syndrome_only_mi/net/mi_scaling"))
     parser.add_argument("--apply", action="store_true", help="Rewrite records in place.")
     args = parser.parse_args()
 

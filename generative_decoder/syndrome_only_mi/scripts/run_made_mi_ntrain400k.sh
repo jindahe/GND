@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
-BASE_ROOT="${BASE_ROOT:-net/mi_scaling/made_mi_ntrain400k}"
+BASE_ROOT="${BASE_ROOT:-syndrome_only_mi/net/mi_scaling/made_mi_ntrain400k}"
 DATASET_DIR="${DATASET_DIR:-$BASE_ROOT/datasets}"
 MODEL_DIR="${MODEL_DIR:-$BASE_ROOT/models}"
 RESULT_DIR="${RESULT_DIR:-$BASE_ROOT/results}"
@@ -35,7 +35,7 @@ for L in "${L_VALUES[@]}"; do
 
     echo "=== START made_mi_ntrain400k L=${L} train_seed=${TSEED} $(date -Is) ==="
 
-    python3 decoding/run_mi_scale_sweep.py \
+    python3 -m syndrome_only_mi.run_scale_sweep \
       --l-values "$L" \
       --device "$DEVICE" \
       --n-type made \

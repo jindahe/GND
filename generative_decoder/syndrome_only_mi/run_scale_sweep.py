@@ -4,10 +4,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from record_utils import utc_timestamp, write_json_record
+from .record_utils import utc_timestamp, write_json_record
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+ARCHIVE_ROOT = PROJECT_ROOT / "syndrome_only_mi"
 
 
 def parse_args():
@@ -138,25 +139,25 @@ def parse_args():
     parser.add_argument(
         "--dataset-dir",
         type=str,
-        default="net/mi_scaling/datasets",
+        default="syndrome_only_mi/net/mi_scaling/datasets",
         help="Directory for syndrome datasets, relative to repo root unless absolute.",
     )
     parser.add_argument(
         "--model-dir",
         type=str,
-        default="net/mi_scaling/models",
+        default="syndrome_only_mi/net/mi_scaling/models",
         help="Directory for trained syndrome models, relative to repo root unless absolute.",
     )
     parser.add_argument(
         "--result-dir",
         type=str,
-        default="net/mi_scaling/results",
+        default="syndrome_only_mi/net/mi_scaling/results",
         help="Directory for per-L MI JSON outputs, relative to repo root unless absolute.",
     )
     parser.add_argument(
         "--summary-dir",
         type=str,
-        default="net/mi_scaling",
+        default="syndrome_only_mi/net/mi_scaling",
         help="Directory for aggregated P8 outputs, relative to repo root unless absolute.",
     )
     parser.add_argument(
@@ -256,7 +257,8 @@ def maybe_generate_dataset(args, l_value, order, dataset_dir, env):
     n = 2 * l_value * l_value
     cmd = [
         args.python,
-        "decoding/syndrome_dataset.py",
+        "-m",
+        "syndrome_only_mi.dataset",
         "-c_type",
         "tor",
         "-n",
@@ -297,7 +299,8 @@ def training_common_args(args, l_value, order, dataset_dir, model_dir):
     n = 2 * l_value * l_value
     cmd = [
         args.python,
-        "decoding/train_mi_syndrome.py",
+        "-m",
+        "syndrome_only_mi.train",
         "-c_type",
         "tor",
         "-n",
@@ -434,7 +437,8 @@ def maybe_evaluate_mi(args, l_value, model_dir, result_dir, env):
     n = 2 * l_value * l_value
     cmd = [
         args.python,
-        "decoding/mi_bipartite.py",
+        "-m",
+        "syndrome_only_mi.bipartite_mi",
         "-c_type",
         "tor",
         "-n",
@@ -483,7 +487,8 @@ def summarize(args, result_paths, summary_dir, env):
 
     cmd = [
         args.python,
-        "decoding/mi_scale_analysis.py",
+        "-m",
+        "syndrome_only_mi.scale_analysis",
         "--output-json",
         str(json_path),
         "--output-csv",
@@ -504,7 +509,7 @@ def write_sweep_manifest(args, result_paths, summary_dir):
         "record_type": "mi_scale_sweep",
         "schema_version": 1,
         "created_at_utc": utc_timestamp(),
-        "script": "decoding/run_mi_scale_sweep.py",
+        "script": "syndrome_only_mi/run_scale_sweep.py",
         "config": {
             "l_values": args.l_values,
             "allow_unbalanced": args.allow_unbalanced,

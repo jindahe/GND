@@ -3,6 +3,7 @@ __pycache__/
 **/__pycache__/
 *.pyc
 logs/
+*.pdf
 
 # Local agent/plugin state
 .agents/
@@ -11,32 +12,41 @@ skills-lock.json
 # Generated documentation plots and stale fit exports
 docs/*.png
 docs/*.pdf
-docs/MI_FIT_ALL_RECOMMENDED_FIT_LGE10.csv
-docs/MI_FIT_ALL_RECOMMENDED_FIT_LGE10.json
+syndrome_only_mi/docs/*.png
+!syndrome_only_mi/docs/current_progress/*.png
+syndrome_only_mi/docs/*.pdf
+!syndrome_only_mi/docs/MI_FIT_ALL_RECOMMENDED_FIT_LGE10.csv
+!syndrome_only_mi/docs/MI_FIT_ALL_RECOMMENDED_FIT_LGE10.json
 net/code_capacity/*.pt
 net/**/*.pt
 net/**/*.pth
+net/gnd/datasets/
+net/gnd/results/
+net/gnd/models/
+net/gnd/nd_min/
+syndrome_only_mi/net/**/*.pt
+syndrome_only_mi/logs/
 
 # Generated syndrome datasets and checkpoints
-net/syndrome_data/
-net/syndrome_models/
+syndrome_only_mi/net/syndrome_data/
+syndrome_only_mi/net/syndrome_models/
 
 # Generated MI sweep artifacts: keep top-level summaries, ignore heavy internals
-net/mi_scaling/**/datasets/
-net/mi_scaling/**/models/
-net/mi_scaling/**/results/
-net/mi_scaling/**/L*_tseed*/
+syndrome_only_mi/net/mi_scaling/**/datasets/
+syndrome_only_mi/net/mi_scaling/**/models/
+syndrome_only_mi/net/mi_scaling/**/results/
+syndrome_only_mi/net/mi_scaling/**/L*_tseed*/
 
 # Generated stability raw per-seed outputs: keep grouped summaries, ignore raw internals
-net/mi_stability/mi_stability.png
-net/mi_stability/mi_stability_grouped.csv
-net/mi_stability/mi_stability_raw.csv
-net/mi_stability/mi_stability_summary.json
-net/mi_stability/**/mi_stability_raw.csv
-net/mi_stability/**/results/
+syndrome_only_mi/net/mi_stability/mi_stability.png
+syndrome_only_mi/net/mi_stability/mi_stability_grouped.csv
+syndrome_only_mi/net/mi_stability/mi_stability_raw.csv
+syndrome_only_mi/net/mi_stability/mi_stability_summary.json
+syndrome_only_mi/net/mi_stability/**/mi_stability_raw.csv
+syndrome_only_mi/net/mi_stability/**/results/
 
 # One-off diagnostic directory already summarized elsewhere
-net/mi_scaling/p8_made_plateau_l10/
+syndrome_only_mi/net/mi_scaling/p8_made_plateau_l10/
 
 # Generated toric code instances from recent MI sweeps
 code/tor_n72_d6_k2_seed0
@@ -46,3 +56,4 @@ code/tor_n288_d12_k2_seed0
 code/tor_n392_d14_k2_seed0
 code/tor_n512_d16_k2_seed0
 code/tor_n648_d18_k2_seed0
+code/tor_n8_d2_k2_seed0

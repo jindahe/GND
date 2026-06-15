@@ -4,13 +4,15 @@ Stable rules for agents working in this repository.
 
 ## Purpose
 
-This repo contains the cleaned generative-decoder workflow and the
+This repo contains the cleaned generative-decoder workflow and an archived
 syndrome-only mutual-information (MI) scaling pipeline for toric-code
-experiments.
+experiments. The archived syndrome-only pipeline now lives under
+`syndrome_only_mi/`; top-level `decoding/` and `scripts/` no longer carry
+syndrome-only compatibility wrappers.
 
 Keep this file stable. Put active run ids, seed blocks, current commands, and
-unfinished decisions in `docs/NEXT_STEPS.md`. Put completed run reports in
-`docs/agent_outputs/scaling_runs/`.
+unfinished decisions in `docs/NEXT_STEPS.md`. Put completed syndrome-only run
+reports in `syndrome_only_mi/docs/agent_outputs/scaling_runs/`.
 
 ## Read First
 
@@ -18,10 +20,12 @@ Before substantial work, read only the smallest relevant set:
 
 - `README.md`: overview and common workflows.
 - `docs/NEXT_STEPS.md`: current unfinished plan.
-- `docs/SEED_POLICY.md`: seed inclusion/replacement/failure policy.
-- `docs/STABILITY_CHECKLIST.md`: stability gates.
-- `docs/MI_FIT_SUMMARY.md` and `docs/MI_FIT_ANALYSIS.md`: current fit state.
-- Latest relevant report in `docs/agent_outputs/scaling_runs/`.
+- `syndrome_only_mi/docs/SEED_POLICY.md`: seed inclusion/replacement/failure policy.
+- `syndrome_only_mi/docs/STABILITY_CHECKLIST.md`: stability gates.
+- `syndrome_only_mi/docs/MI_FIT_SUMMARY.md` and
+  `syndrome_only_mi/docs/MI_FIT_ANALYSIS.md`: archived fit state.
+- Latest relevant syndrome-only report in
+  `syndrome_only_mi/docs/agent_outputs/scaling_runs/`.
 
 If docs disagree, prefer machine-readable artifacts and the most recent run
 report, then update docs rather than silently choosing one version.
@@ -29,11 +33,14 @@ report, then update docs rather than silently choosing one version.
 ## Repository Map
 
 - `module/`: code objects, GF(2), error models, autoregressive models.
-- `decoding/`: code generation, syndrome datasets, MI training/evaluation,
-  scaling analysis, and decoder evaluation.
-- `scripts/`: audits, GPU wrapper, experiment helpers.
-- `docs/`: policies, fit records, analysis, run reports.
-- `net/`: generated datasets/checkpoints/results/plots. Do not commit heavy
+- `decoding/`: code generation, legacy decoder evaluation, and baselines.
+- `gnd/`: current GND datasets, training, decoder evaluation, cut-MI, and
+  `n_d^min(L)` tooling.
+- `syndrome_only_mi/`: archived syndrome-only datasets, MI training/evaluation,
+  scaling analysis, audits, scripts, and historical fit docs.
+- `scripts/`: GPU wrapper and current experiment helpers.
+- `docs/`: current GND plans and notes.
+- `net/`: current generated datasets/checkpoints/results/plots. Do not commit heavy
   artifacts here.
 - `logs/`: local run logs, ignored by Git.
 
@@ -49,6 +56,33 @@ report, then update docs rather than silently choosing one version.
    work.
 
 Prefer existing scripts, CLIs, and record formats over ad hoc tooling.
+
+## GND Outline MI Invariants
+
+`outline.md` is the source of truth for current GND MI work. It asks for MI
+under the true distribution
+
+```text
+p(beta, gamma) = p(beta_1, beta_2, gamma_1, gamma_2)
+```
+
+and then for neural models that learn the same distribution for
+`n_d^min(L)` analysis.
+
+The required cuts are variable cuts in the GND representation:
+
+- `middle`: `I(beta : gamma)`.
+- `quarter`: `I(beta_1 : beta_2, gamma)`, with `beta_1` on side A and
+  `(beta_2, gamma)` on side B.
+- `three_quarter`: `I(beta, gamma_1 : gamma_2)`, with `(beta, gamma_1)` on
+  side A and `gamma_2` on side B.
+
+Do not reinterpret these as physical real-space cuts of qubits, edges,
+plaquettes, or regions. Do not reinterpret them as the archived syndrome-only
+AB/BA spatial cuts. Do not condition on `syndrome = 0` unless the user
+explicitly asks for a separate diagnostic with that condition. For true
+distribution baselines, the target object is `p(beta, gamma)` at the selected
+physical error rate and error model.
 
 ## Protocol-Fixed MI Comparisons
 
@@ -75,7 +109,8 @@ For one fixed `L`, choose among multiple MI aggregates by this priority:
 
 - Prefer the row from the currently declared recommended protocol.
 - Exclude only seeds with objective saved-JSON training failures, following
-  `docs/SEED_POLICY.md`; do not exclude clean high-MI or low-MI seeds by value.
+  `syndrome_only_mi/docs/SEED_POLICY.md`; do not exclude clean high-MI or
+  low-MI seeds by value.
 - Prefer clean same-protocol 8-seed aggregates over pilots, replacements, or
   mixed-protocol diagnostics.
 - Treat lower bootstrap error as secondary to train-seed stability and
@@ -89,7 +124,7 @@ For one fixed `L`, choose among multiple MI aggregates by this priority:
 Before formal syndrome-only MI work:
 
 ```bash
-scripts/run_mi_agent_audits.sh
+syndrome_only_mi/scripts/run_mi_agent_audits.sh
 ```
 
 Required marker:
@@ -111,7 +146,9 @@ For long GPU jobs, verify GPU/CUDA first, then run the actual project script
 directly in a persistent shell session such as `tmux`.
 
 For code changes, run the smallest relevant smoke tests. For syndrome-only MI
-logic changes, always run `scripts/run_mi_agent_audits.sh`.
+logic changes, always run `syndrome_only_mi/scripts/run_mi_agent_audits.sh`.
+For GND outline MI logic changes, test the `gnd.*` path being changed; do not
+substitute syndrome-only audits for GND cut-MI validation.
 
 ## Syndrome-Only MI Invariants
 
@@ -166,7 +203,8 @@ Detached launch policy:
 ```bash
 tmux new-session -d -s <session> \
   'cd /path/to/repo &&
-   env BASE_ROOT=net/mi_scaling/<run_id> ... scripts/run_made_mi_ntrain400k.sh \
+   env BASE_ROOT=syndrome_only_mi/net/mi_scaling/<run_id> ... \
+     syndrome_only_mi/scripts/run_made_mi_ntrain400k.sh \
    > logs/<run_id>.log 2>&1'
 ```
 
@@ -186,7 +224,7 @@ there is a clear failure signal.
 
 ## Seed And Failure Policy
 
-Follow `docs/SEED_POLICY.md`.
+Follow `syndrome_only_mi/docs/SEED_POLICY.md`.
 
 A seed is a training failure only if saved training JSON shows objective
 late-epoch failure, e.g. late train/validation NLL `>= 1e3`. Do not infer
@@ -207,7 +245,7 @@ Use sample standard deviation for `seed_std`.
 
 ## Fit Records
 
-Recommended fit inputs are rows in `docs/MI_FIT_POINTS.csv` with
+Recommended fit inputs are rows in `syndrome_only_mi/docs/MI_FIT_POINTS.csv` with
 `include_in_recommended_fit=yes`.
 
 Rules:
@@ -216,8 +254,9 @@ Rules:
 - Keep only one recommended row per `L`.
 - Diagnostic architecture, dataset-size, replacement, and sensitivity rows
   default to `include_in_recommended_fit=no`.
-- Any changed recommended row requires updates to `docs/MI_FIT_SUMMARY.md` and
-  `docs/MI_FIT_ANALYSIS.md`.
+- Any changed recommended row requires updates to
+  `syndrome_only_mi/docs/MI_FIT_SUMMARY.md` and
+  `syndrome_only_mi/docs/MI_FIT_ANALYSIS.md`.
 - Do not silently substitute diagnostic rows into the recommended fit.
 
 Validate the CSV after edits.
@@ -226,10 +265,12 @@ Validate the CSV after edits.
 
 After each completed formal or diagnostic run:
 
-1. Add a report under `docs/agent_outputs/scaling_runs/`.
-2. Add diagnostic/recommended rows to `docs/MI_FIT_POINTS.csv` if relevant.
-3. Update `docs/MI_FIT_SUMMARY.md` if fit record or interpretation changes.
-4. Update `docs/MI_FIT_ANALYSIS.md` if sensitivity/interpretation changes.
+1. Add a report under `syndrome_only_mi/docs/agent_outputs/scaling_runs/`.
+2. Add diagnostic/recommended rows to `syndrome_only_mi/docs/MI_FIT_POINTS.csv`
+   if relevant.
+3. Update `syndrome_only_mi/docs/MI_FIT_SUMMARY.md` if fit record or
+   interpretation changes.
+4. Update `syndrome_only_mi/docs/MI_FIT_ANALYSIS.md` if sensitivity/interpretation changes.
 5. Update `docs/NEXT_STEPS.md`.
 
 Run reports should include command, artifact paths, per-seed MI/bootstrap std,
@@ -238,7 +279,7 @@ seed std, cv, min/max, mean bootstrap std, interpretation, and next decision.
 
 ## Stability Guidance
 
-Use `docs/STABILITY_CHECKLIST.md` for detailed policy.
+Use `syndrome_only_mi/docs/STABILITY_CHECKLIST.md` for detailed policy.
 
 - Evaluation is stable when bootstrap std is much smaller than train-seed
   spread.

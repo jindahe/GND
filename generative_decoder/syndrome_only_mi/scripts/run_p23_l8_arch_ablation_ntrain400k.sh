@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
-RUN_ROOT="${RUN_ROOT:-net/mi_scaling/p23_l8_arch_ablation_ntrain400k}"
+RUN_ROOT="${RUN_ROOT:-syndrome_only_mi/net/mi_scaling/p23_l8_arch_ablation_ntrain400k}"
 DATASET_ROOT="${DATASET_ROOT:-$RUN_ROOT/datasets}"
 L_VALUES="${L_VALUES:-8}"
 TRAIN_SEEDS="${TRAIN_SEEDS:-1 2 3}"
@@ -30,7 +30,7 @@ run_variant() {
     DEVICE="$DEVICE" \
     DEPTH="$depth" \
     WIDTH="$width" \
-    scripts/run_made_mi_ntrain400k.sh
+    syndrome_only_mi/scripts/run_made_mi_ntrain400k.sh
 
   echo "=== END p23 label=${label} depth=${depth} width=${width} $(date -Is) ==="
 }

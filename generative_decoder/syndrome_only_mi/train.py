@@ -8,14 +8,15 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from args import args
+from .args import args
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+ARCHIVE_ROOT = PROJECT_ROOT / "syndrome_only_mi"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from module import MADE, NADE, TraDE_binary  # noqa: E402
-from record_utils import utc_timestamp, write_json_record  # noqa: E402
+from .record_utils import utc_timestamp, write_json_record  # noqa: E402
 
 
 def get_dtype():
@@ -46,7 +47,7 @@ def resolve_dataset_path():
             path = PROJECT_ROOT / path
         return path
 
-    dataset_dir = Path(args.dataset_dir) if args.dataset_dir else PROJECT_ROOT / "net" / "syndrome_data"
+    dataset_dir = Path(args.dataset_dir) if args.dataset_dir else ARCHIVE_ROOT / "net" / "syndrome_data"
     if not dataset_dir.is_absolute():
         dataset_dir = PROJECT_ROOT / dataset_dir
 
@@ -64,7 +65,7 @@ def resolve_checkpoint_path():
         if not output_dir.is_absolute():
             output_dir = PROJECT_ROOT / output_dir
     else:
-        output_dir = PROJECT_ROOT / "net" / "syndrome_models"
+        output_dir = ARCHIVE_ROOT / "net" / "syndrome_models"
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -530,7 +531,7 @@ def main():
         "schema_version": 2,
         "started_at_utc": started_at,
         "finished_at_utc": utc_timestamp(),
-        "script": "decoding/train_mi_syndrome.py",
+        "script": "syndrome_only_mi/train.py",
         "code": {
             "c_type": args.c_type,
             "n": args.n,

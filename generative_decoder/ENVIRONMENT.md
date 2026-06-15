@@ -76,64 +76,81 @@ Expected output:
 
 ## Project Smoke Tests
 
-All commands below were validated from:
+All commands below are intended to run from the repository root:
 
 ```bash
-cd /home/jinboyu/GND/generative_decoder/decoding
+cd /home/jinboyu/GND/generative_decoder
 ```
 
-### CPU Smoke Test
+### GND CPU Smoke Test
+
+Generate a small dataset, train a small MADE model, evaluate outline cut MI,
+and run decoder evaluation:
+
+```bash
+env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python -m gnd.datasets --c-type sur --n 13 --d 3 --k 1 --seed 0 --e-model dep --er 0.05 --n-train 64 --n-val 16 --n-test 16 --target beta_gamma --output-path /tmp/gnd_smoke_dataset.pt
+
+env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python -m gnd.train --dataset-path /tmp/gnd_smoke_dataset.pt --save-dir /tmp/gnd_smoke_models --n-type made --depth 0 --width 4 --device cpu --dtype float32 --epoch 2 --batch 16 --lr 0.001 --train-seed 1 --log-every 1
+
+env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python -m gnd.evaluate_cut_mi --dataset-path /tmp/gnd_smoke_dataset.pt --split test --samples 16 --bootstrap-samples 3 --output-path /tmp/gnd_true_mi.json
+
+env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python -m gnd.evaluate_cut_mi --checkpoint /tmp/gnd_smoke_models/made_beta_gamma_sur_n13_d3_k1_seed0_er0.05_dep_tseed1.pt --samples 32 --bootstrap-samples 3 --device cpu --output-path /tmp/gnd_model_mi.json
+
+env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python -m gnd.evaluate_decoder --checkpoint /tmp/gnd_smoke_models/made_beta_gamma_sur_n13_d3_k1_seed0_er0.05_dep_tseed1.pt --trials 32 --device cpu --output-path /tmp/gnd_decoder_eval.json
+```
+
+### Legacy Code-Capacity CPU Smoke Test
 
 Training:
 
 ```bash
-env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python training.py -save True -n_type made -c_type sur -n 13 -d 3 -k 1 -seed 0 -er 0.189 -device cpu -batch 8 -epoch 1 -trials 8 -depth 1 -width 4
+env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python decoding/training.py -save True -n_type made -c_type sur -n 13 -d 3 -k 1 -seed 0 -er 0.189 -device cpu -batch 8 -epoch 1 -trials 8 -depth 1 -width 4
 ```
 
 Forward decoding:
 
 ```bash
-env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python forward_decoding.py -n_type made -c_type sur -n 13 -d 3 -k 1 -seed 0 -e_model dep -device cpu -trials 8 -er 0.189
+env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python decoding/forward_decoding.py -n_type made -c_type sur -n 13 -d 3 -k 1 -seed 0 -e_model dep -device cpu -trials 8 -er 0.189
 ```
 
-### GPU Smoke Test
+### Legacy Code-Capacity GPU Smoke Test
 
 Training:
 
 ```bash
-env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python training.py -save True -n_type made -c_type sur -n 13 -d 3 -k 1 -seed 0 -er 0.189 -device cuda:0 -batch 8 -epoch 1 -trials 8 -depth 1 -width 4
+env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python decoding/training.py -save True -n_type made -c_type sur -n 13 -d 3 -k 1 -seed 0 -er 0.189 -device cuda:0 -batch 8 -epoch 1 -trials 8 -depth 1 -width 4
 ```
 
 Forward decoding:
 
 ```bash
-env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python forward_decoding.py -n_type made -c_type sur -n 13 -d 3 -k 1 -seed 0 -e_model dep -device cuda:0 -trials 8 -er 0.189
+env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python decoding/forward_decoding.py -n_type made -c_type sur -n 13 -d 3 -k 1 -seed 0 -e_model dep -device cuda:0 -trials 8 -er 0.189
 ```
 
 MWPM baseline:
 
 ```bash
-env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python mwpm.py -c_type sur -n 13 -d 3 -k 1 -seed 0 -e_model dep -trials 8
+env MPLCONFIGDIR=/tmp/matplotlib-ai-env-cu128 /home/jinboyu/miniconda3/envs/ai-env-cu128/bin/python decoding/mwpm.py -c_type sur -n 13 -d 3 -k 1 -seed 0 -e_model dep -trials 8
 ```
 
-### Syndrome MI Smoke Test
+### Archived Syndrome-Only MI Smoke Test
 
 CPU smoke test:
 
 ```bash
-python decoding/syndrome_dataset.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_train 64 -n_val 16 -n_test 16 -partition_axis x -partition_order AB -dataset_dir /tmp/gnd_mi_smoke
-python decoding/syndrome_dataset.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_train 64 -n_val 16 -n_test 16 -partition_axis x -partition_order BA -dataset_dir /tmp/gnd_mi_smoke
-python decoding/train_mi_syndrome.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -depth 0 -width 4 -device cpu -dtype float32 -epoch 2 -batch 16 -partition_axis x -partition_order AB -dataset_dir /tmp/gnd_mi_smoke -save True -save_dir /tmp/gnd_mi_models
-python decoding/train_mi_syndrome.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -depth 0 -width 4 -device cpu -dtype float32 -epoch 2 -batch 16 -partition_axis x -partition_order BA -dataset_dir /tmp/gnd_mi_smoke -save True -save_dir /tmp/gnd_mi_models
-python decoding/mi_bipartite.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -device cpu -partition_axis x -save_dir /tmp/gnd_mi_models -mi_samples 128 -chunk_size 32 -bootstrap_samples 10 -bootstrap_seed 7
+python -m syndrome_only_mi.dataset -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_train 64 -n_val 16 -n_test 16 -partition_axis x -partition_order AB -dataset_dir /tmp/gnd_mi_smoke
+python -m syndrome_only_mi.dataset -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_train 64 -n_val 16 -n_test 16 -partition_axis x -partition_order BA -dataset_dir /tmp/gnd_mi_smoke
+python -m syndrome_only_mi.train -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -depth 0 -width 4 -device cpu -dtype float32 -epoch 2 -batch 16 -partition_axis x -partition_order AB -dataset_dir /tmp/gnd_mi_smoke -save True -save_dir /tmp/gnd_mi_models
+python -m syndrome_only_mi.train -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -depth 0 -width 4 -device cpu -dtype float32 -epoch 2 -batch 16 -partition_axis x -partition_order BA -dataset_dir /tmp/gnd_mi_smoke -save True -save_dir /tmp/gnd_mi_models
+python -m syndrome_only_mi.bipartite_mi -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -device cpu -partition_axis x -save_dir /tmp/gnd_mi_models -mi_samples 128 -chunk_size 32 -bootstrap_samples 10 -bootstrap_seed 7
 ```
 
 GPU smoke test through Codex:
 
 ```bash
-./scripts/run_codex_gpu.sh "env MPLCONFIGDIR=/tmp/mpl-gnd-gpu python3 decoding/train_mi_syndrome.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -depth 0 -width 4 -device cuda:0 -dtype float32 -epoch 1 -batch 16 -partition_axis x -partition_order AB -dataset_dir /tmp/gnd_mi_smoke -save True -save_dir /tmp/gnd_mi_models_gpu"
-./scripts/run_codex_gpu.sh "env MPLCONFIGDIR=/tmp/mpl-gnd-gpu python3 decoding/train_mi_syndrome.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -depth 0 -width 4 -device cuda:0 -dtype float32 -epoch 1 -batch 16 -partition_axis x -partition_order BA -dataset_dir /tmp/gnd_mi_smoke -save True -save_dir /tmp/gnd_mi_models_gpu"
-./scripts/run_codex_gpu.sh "env MPLCONFIGDIR=/tmp/mpl-gnd-gpu python3 decoding/mi_bipartite.py -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -device cuda:0 -partition_axis x -save_dir /tmp/gnd_mi_models_gpu -mi_samples 128 -chunk_size 32 -bootstrap_samples 10 -bootstrap_seed 7"
+./scripts/run_codex_gpu.sh "env MPLCONFIGDIR=/tmp/mpl-gnd-gpu python3 -m syndrome_only_mi.train -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -depth 0 -width 4 -device cuda:0 -dtype float32 -epoch 1 -batch 16 -partition_axis x -partition_order AB -dataset_dir /tmp/gnd_mi_smoke -save True -save_dir /tmp/gnd_mi_models_gpu"
+./scripts/run_codex_gpu.sh "env MPLCONFIGDIR=/tmp/mpl-gnd-gpu python3 -m syndrome_only_mi.train -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -depth 0 -width 4 -device cuda:0 -dtype float32 -epoch 1 -batch 16 -partition_axis x -partition_order BA -dataset_dir /tmp/gnd_mi_smoke -save True -save_dir /tmp/gnd_mi_models_gpu"
+./scripts/run_codex_gpu.sh "env MPLCONFIGDIR=/tmp/mpl-gnd-gpu python3 -m syndrome_only_mi.bipartite_mi -c_type tor -n 32 -d 4 -k 2 -seed 0 -e_model dep -er 0.05 -n_type made -device cuda:0 -partition_axis x -save_dir /tmp/gnd_mi_models_gpu -mi_samples 128 -chunk_size 32 -bootstrap_samples 10 -bootstrap_seed 7"
 ```
 
 ## Installing the Validated GPU Environment

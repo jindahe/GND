@@ -4,14 +4,15 @@ from pathlib import Path
 
 import torch
 
-from args import args
+from .args import args
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+ARCHIVE_ROOT = PROJECT_ROOT / "syndrome_only_mi"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from module import MADE, NADE, TraDE_binary  # noqa: E402
-from record_utils import utc_timestamp  # noqa: E402
+from .record_utils import utc_timestamp  # noqa: E402
 
 
 def parse_dtype(name):
@@ -43,7 +44,7 @@ def resolve_checkpoint_path(order):
             path = PROJECT_ROOT / path
         return path
 
-    checkpoint_dir = Path(args.save_dir) if args.save_dir else PROJECT_ROOT / "net" / "syndrome_models"
+    checkpoint_dir = Path(args.save_dir) if args.save_dir else ARCHIVE_ROOT / "net" / "syndrome_models"
     if not checkpoint_dir.is_absolute():
         checkpoint_dir = PROJECT_ROOT / checkpoint_dir
 
