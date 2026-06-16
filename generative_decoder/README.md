@@ -181,6 +181,28 @@ python -m gnd.sweep_nd_min \
   --output-csv net/gnd/nd_min/nd_min.csv
 ```
 
+Build a middle-cut scaling record and check the toric-code logical-sector
+upper bound:
+
+```bash
+python -m gnd.middle_cut_scaling \
+  --d-values 2,3,4,5,6 \
+  --c-type tor \
+  --k 2 \
+  --seed 0 \
+  --e-model dep \
+  --er 0.05 \
+  --backend sample \
+  --samples 10000 \
+  --bootstrap-samples 30 \
+  --output-json net/gnd/scaling/middle_cut_tor_dep_er0.05_L2-6_sample10k.json \
+  --output-csv net/gnd/scaling/middle_cut_tor_dep_er0.05_L2-6_sample10k.csv
+```
+
+For the middle cut, `I(beta:gamma) <= H(beta) <= 2k ln(2)`. For toric code
+with `k=2`, this gives a size-independent upper bound of `4 ln(2)` nats. See
+`docs/MIDDLE_CUT_SCALING.md` for the first depolarizing-noise check.
+
 ## Legacy Code-Capacity Usage
 
 The legacy scripts remain available while the new `gnd/` package matures.

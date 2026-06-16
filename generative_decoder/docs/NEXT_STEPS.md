@@ -23,6 +23,8 @@ Implemented outline cuts:
 See `docs/THEORY_GUIDE.md` for the theory target and scalable-MI rationale.
 See `docs/IMPLEMENTATION.md` for the cut-record schema, backend contract, CLI
 plan, and tests.
+See `docs/MIDDLE_CUT_SCALING.md` for the implemented middle-cut scaling
+summary and the toric depolarizing-noise upper-bound check.
 
 ## Immediate Unfinished Work
 

@@ -24,6 +24,7 @@ net/gnd/datasets/
 net/gnd/results/
 net/gnd/models/
 net/gnd/nd_min/
+net/gnd/scaling/
 syndrome_only_mi/net/**/*.pt
 syndrome_only_mi/logs/
 
@@ -51,9 +52,26 @@ syndrome_only_mi/net/mi_scaling/p8_made_plateau_l10/
 # Generated toric code instances from recent MI sweeps
 code/tor_n72_d6_k2_seed0
 code/tor_n128_d8_k2_seed0
+code/tor_n162_d9_k2_seed0
 code/tor_n200_d10_k2_seed0
+code/tor_n242_d11_k2_seed0
 code/tor_n288_d12_k2_seed0
+code/tor_n338_d13_k2_seed0
 code/tor_n392_d14_k2_seed0
+code/tor_n450_d15_k2_seed0
 code/tor_n512_d16_k2_seed0
+code/tor_n578_d17_k2_seed0
 code/tor_n648_d18_k2_seed0
+code/tor_n722_d19_k2_seed0
+code/tor_n800_d20_k2_seed0
+code/tor_n882_d21_k2_seed0
+code/tor_n968_d22_k2_seed0
+code/tor_n1058_d23_k2_seed0
+code/tor_n1152_d24_k2_seed0
+code/tor_n1250_d25_k2_seed0
+code/tor_n1352_d26_k2_seed0
+code/tor_n1458_d27_k2_seed0
+code/tor_n1568_d28_k2_seed0
+code/tor_n1682_d29_k2_seed0
+code/tor_n1800_d30_k2_seed0
 code/tor_n8_d2_k2_seed0
