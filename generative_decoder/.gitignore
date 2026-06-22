@@ -25,6 +25,7 @@ net/gnd/results/
 net/gnd/models/
 net/gnd/nd_min/
 net/gnd/scaling/
+net/gnd/structured_true_mi/
 syndrome_only_mi/net/**/*.pt
 syndrome_only_mi/logs/
 
