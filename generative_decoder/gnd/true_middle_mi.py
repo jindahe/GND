@@ -10,8 +10,10 @@ from module import Errormodel, Loading_code, read_code
 
 from .beta_distribution import beta_entropy
 from .exact_mi import enumerate_distribution, error_configs
+from .partition_backends.binary_dense_elimination import BinaryDenseVariableEliminationSectorPartition
 from .partition_backends.brute_force import BruteForceSectorPartition
 from .partition_backends.elimination import VariableEliminationSectorPartition
+from .partition_backends.toric_row_transfer import ToricRowTransferSectorPartition
 from .records import utc_timestamp, write_json_record
 
 
@@ -29,7 +31,16 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--e-model", default="dep", choices=["dep", "x", "z"])
     parser.add_argument("--er", type=float, required=True)
-    parser.add_argument("--backend", choices=["brute_force", "elimination"], default="brute_force")
+    parser.add_argument(
+        "--backend",
+        choices=[
+            "brute_force",
+            "elimination",
+            "binary_dense_elimination",
+            "toric_row_transfer",
+        ],
+        default="brute_force",
+    )
     parser.add_argument("--gamma-samples", type=int, default=0)
     parser.add_argument("--gamma-mode", choices=["sample", "exhaustive"], default="sample")
     parser.add_argument("--sample-seed", type=int, default=0)
@@ -38,6 +49,9 @@ def parse_args():
     parser.add_argument("--max-exact-errors", type=int, default=20_000_000)
     parser.add_argument("--chunk-size", type=int, default=65_536)
     parser.add_argument("--elimination-max-intermediate-states", type=int, default=5_000_000)
+    parser.add_argument("--toric-transfer-max-states", type=int, default=5_000_000)
+    parser.add_argument("--toric-transfer-max-boundary-states", type=int, default=4096)
+    parser.add_argument("--toric-transfer-max-dense-character-boundary-states", type=int, default=512)
     parser.add_argument("--output-path", default="")
     parser.add_argument("--sector-records-path", default="")
     return parser.parse_args()
@@ -120,6 +134,25 @@ def build_backend(args, code):
             er=args.er,
             e_model=args.e_model,
             max_intermediate_states=args.elimination_max_intermediate_states,
+        )
+    if args.backend == "binary_dense_elimination":
+        return BinaryDenseVariableEliminationSectorPartition(
+            code=code,
+            k=args.k,
+            er=args.er,
+            e_model=args.e_model,
+            max_intermediate_states=args.elimination_max_intermediate_states,
+        )
+    if args.backend == "toric_row_transfer":
+        return ToricRowTransferSectorPartition(
+            code=code,
+            k=args.k,
+            er=args.er,
+            e_model=args.e_model,
+            d=args.d,
+            max_states=args.toric_transfer_max_states,
+            max_boundary_states=args.toric_transfer_max_boundary_states,
+            max_dense_character_boundary_states=args.toric_transfer_max_dense_character_boundary_states,
         )
     raise ValueError(f"Unsupported backend: {args.backend}")
 
