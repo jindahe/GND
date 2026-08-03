@@ -8,7 +8,7 @@ START_L="${START_L:-2}"
 END_L="${END_L:-30}"
 K="${K:-2}"
 SEED="${SEED:-0}"
-LOG_DIR="${LOG_DIR:-logs}"
+LOG_DIR="${LOG_DIR:-artifacts/logs}"
 DRY_RUN="${DRY_RUN:-0}"
 
 mkdir -p "$LOG_DIR"
@@ -22,7 +22,7 @@ echo
 
 for ((L = START_L; L <= END_L; L++)); do
   n=$((2 * L * L))
-  artifact="code/tor_n${n}_d${L}_k${K}_seed${SEED}"
+  artifact="data/code_instances/tor_n${n}_d${L}_k${K}_seed${SEED}"
   log_path="${LOG_DIR}/generate_tor_L${L}_n${n}_k${K}_seed${SEED}.log"
 
   if [[ -f "$artifact" ]]; then
@@ -30,7 +30,7 @@ for ((L = START_L; L <= END_L; L++)); do
     continue
   fi
 
-  cmd=(python decoding/code_generator.py -c_type tor -n "$n" -d "$L" -k "$K" -seed "$SEED")
+  cmd=(python -m gnd_decoder.cli.generate_code -c_type tor -n "$n" -d "$L" -k "$K" -seed "$SEED")
   echo "generate L=${L} n=${n}: ${cmd[*]}"
   echo "log: ${log_path}"
 

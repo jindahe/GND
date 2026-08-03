@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gnd-decoder"
+version = "0.1.0"
+description = "Generative neural decoder and cut-MI workflows"
+requires-python = ">=3.10"
+dependencies = [
+  "torch",
+  "numpy",
+  "networkx",
+  "scipy",
+  "pymatching",
+  "ldpc",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

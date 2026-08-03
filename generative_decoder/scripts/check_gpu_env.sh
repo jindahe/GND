@@ -42,13 +42,7 @@ PY
 
 echo "=== PROJECT IMPORTS ==="
 python3 - <<'PY'
-import sys
-from pathlib import Path
+import gnd_decoder  # noqa: F401
 
-root = Path.cwd()
-sys.path.insert(0, str(root))
-
-import module  # noqa: F401
-
-print("module import ok")
+print("gnd_decoder import ok")
 PY

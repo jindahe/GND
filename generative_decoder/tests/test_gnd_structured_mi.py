@@ -2,15 +2,15 @@ import math
 
 import torch
 
-from module import Errormodel, Loading_code, read_code
-from gnd.beta_distribution import beta_entropy
-from gnd.exact_mi import enumerate_distribution, exact_cut_mi
-from gnd.partition_backends.binary_dense_elimination import BinaryDenseVariableEliminationSectorPartition
-from gnd.partition_backends.brute_force import BruteForceSectorPartition
-from gnd.partition_backends.elimination import VariableEliminationSectorPartition
-from gnd.partition_backends.toric_plan import binary_dense_plan_diagnostics
-from gnd.partition_backends.toric_row_transfer import ToricRowTransferSectorPartition
-from gnd.partitions import build_cut
+from gnd_decoder.core import Errormodel, Loading_code, read_code
+from gnd_decoder.workflows.beta_distribution import beta_entropy
+from gnd_decoder.workflows.exact_mi import enumerate_distribution, exact_cut_mi
+from gnd_decoder.workflows.partition_backends.binary_dense_elimination import BinaryDenseVariableEliminationSectorPartition
+from gnd_decoder.workflows.partition_backends.brute_force import BruteForceSectorPartition
+from gnd_decoder.workflows.partition_backends.elimination import VariableEliminationSectorPartition
+from gnd_decoder.workflows.partition_backends.toric_plan import binary_dense_plan_diagnostics
+from gnd_decoder.workflows.partition_backends.toric_row_transfer import ToricRowTransferSectorPartition
+from gnd_decoder.workflows.partitions import build_cut
 
 
 class Args:
